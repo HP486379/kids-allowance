@@ -70,32 +70,6 @@
     $('#avatarButton').textContent = state.avatar;
     $('#childName').value = state.childName || '';
     $('#balance').textContent = money(computeBalance());
-
-    // Header "保存" button (minimal, non-intrusive)
-    try {
-      const header = document.querySelector('.app-header');
-      if (header) {
-        let actions = document.getElementById('headerActions');
-        if (!actions) {
-          actions = document.createElement('div');
-          actions.id = 'headerActions';
-          actions.style.marginLeft = 'auto';
-          actions.style.display = 'flex';
-          actions.style.gap = '8px';
-          header.appendChild(actions);
-        }
-        let saveBtn = document.getElementById('saveNowHeader');
-        if (!saveBtn) {
-          saveBtn = document.createElement('button');
-          saveBtn.id = 'saveNowHeader';
-          saveBtn.type = 'button';
-          saveBtn.className = 'btn';
-          saveBtn.textContent = '保存';
-          actions.appendChild(saveBtn);
-        }
-        saveBtn.onclick = () => { save(); toast('保存しました'); };
-      }
-    } catch {}
   }
 
   function renderTabs(){
