@@ -466,10 +466,15 @@
     try{
       const ul = document.getElementById('choreList');
       if(!ul) return;
-      const buttons = ul.querySelectorAll('li button');
-      buttons.forEach((btn, idx)=>{
+      const lis = ul.querySelectorAll('li');
+      lis.forEach((li, idx)=>{
         const ch = state.chores[idx];
-        if(!btn || !ch) return;
+        if(!ch) return;
+        let btn = li.querySelector('button');
+        if(!btn){
+          btn = document.createElement('button');
+          li.appendChild(btn);
+        }
         btn.textContent = 'やった！';
         btn.classList.add('btn','good');
         btn.disabled = (ch.lastDone === today());
