@@ -17,7 +17,7 @@
     chores: [
       { id: id(), name:'繝吶ャ繝峨ｒ縺ｨ縺ｨ縺ｮ縺医ｋ', reward:100, lastDone:'' },
       { id: id(), name:'縺励ｇ繧九＞繧偵°縺溘▼縺代ｋ', reward:100, lastDone:'' },
-      { id: id(), name:'縺励ｇ縺上□縺・, reward:150, lastDone:'' },
+      { id: id(), name:'しょくだい', reward:150, lastDone:'' },
     ],
   });
 
@@ -36,7 +36,7 @@
   function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY) || ''); }catch{ return null } }
   function seed(){
     const st = initialState();
-    st.childName = '縺ｪ縺ｾ縺・;
+    st.childName = 'なまえ';
     st.transactions = [
       { id:id(), type:'income', amount:300, note:'縺ｯ縺倥ａ縺ｦ縺ｮ縺翫％縺･縺九＞', dateISO:new Date().toISOString() },
       { id:id(), type:'expense', amount:120, note:'縺翫ｄ縺､', dateISO:new Date().toISOString() },
