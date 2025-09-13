@@ -461,6 +461,40 @@
   function validAmount(n){ return Number.isFinite(n) && n>0 && n<=1_000_000 }
   function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])) }
 
+  // Chore button binder (robust against innerHTML encoding issues)
+  function bindChoreButtons(){
+    try{
+      const ul = document.getElementById('choreList');
+      if(!ul) return;
+      const buttons = ul.querySelectorAll('li button');
+      buttons.forEach((btn, idx)=>{
+        const ch = state.chores[idx];
+        if(!btn || !ch) return;
+        btn.textContent = 'やった！';
+        btn.classList.add('btn','good');
+        btn.disabled = (ch.lastDone === today());
+        btn.onclick = ()=>{
+          if(ch.lastDone === today()) return;
+          ch.lastDone = today();
+          addTx('chore', ch.reward, `おてつだい ${ch.name}`, true);
+          save();
+          renderChores();
+          bindChoreButtons();
+        };
+      });
+    }catch{}
+  }
+
+  function setupChoreBinding(){
+    const ul = document.getElementById('choreList');
+    if(!ul) return;
+    const ob = new MutationObserver(()=> bindChoreButtons());
+    ob.observe(ul, { childList:true });
+    bindChoreButtons();
+  }
+
   // ----- Init -----
   renderAll();
+  // ensure chore buttons always wired
+  setupChoreBinding();
 })();
