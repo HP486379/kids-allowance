@@ -527,4 +527,111 @@
       const im = document.getElementById('importData'); if(im) im.textContent = 'インポート';
     }catch{}
   })();
+  // ----- UI Enhancers (post-render DOM upgrades) -----
+  function enhanceTransactionsUI(){
+    try{
+      const list = document.getElementById('txList'); if(!list) return;
+      const filter = document.getElementById('filterType');
+      let items = [...state.transactions].sort((a,b)=>b.dateISO.localeCompare(a.dateISO));
+      if(filter && filter.value!=='all') items = items.filter(t=>t.type===filter.value);
+      const lis = Array.from(list.children);
+      lis.forEach((li, i)=>{
+        const t = items[i]; if(!t) return;
+        if(li.querySelector('[data-act="del-tx"]')) return;
+        const btn = document.createElement('button');
+        btn.className = 'btn danger';
+        btn.textContent = 'けす';
+        btn.setAttribute('data-act','del-tx');
+        btn.style.marginLeft = '8px';
+        btn.onclick = ()=>{
+          if(!confirm('この記録をけしますか？')) return;
+          state.transactions = state.transactions.filter(x=>x.id!==t.id);
+          save();
+          // trigger a refresh by toggling filter value programmatically
+          const sel = document.getElementById('filterType');
+          if(sel){ const v=sel.value; sel.value='all'; sel.dispatchEvent(new Event('change')); sel.value=v; sel.dispatchEvent(new Event('change')); }
+          const bal = document.getElementById('balance'); if(bal) bal.textContent = money(computeBalance());
+        };
+        li.appendChild(btn);
+      });
+    }catch{}
+  }
+
+  function enhanceChoresUI(){
+    try{
+      const ul = document.getElementById('choreList'); if(!ul) return;
+      const card = ul.closest('.card');
+      if(card && !document.getElementById('choreAddRow')){
+        const row = document.createElement('div');
+        row.id = 'choreAddRow';
+        row.className = 'field-row';
+        row.style.marginBottom = '10px';
+        row.innerHTML = `
+          <input id="choreName" class="input" placeholder="おてつだいのなまえ" style="flex:1">
+          <input id="choreReward" class="input" inputmode="numeric" pattern="[0-9]*" placeholder="ごほうび (¥)" style="width:140px">
+          <button id="addChoreBtn" class="btn primary" type="button">追加</button>
+        `;
+        card.insertBefore(row, ul);
+        row.querySelector('#addChoreBtn').onclick = ()=>{
+          const name = row.querySelector('#choreName').value.trim();
+          const reward = parseAmount(row.querySelector('#choreReward').value);
+          if(!name) return toast('なまえをいれてね');
+          if(!validAmount(reward)) return toast('金額を正しく入れてね');
+          state.chores.push({ id:id(), name, reward, lastDone:'' });
+          save();
+          row.querySelector('#choreName').value='';
+          row.querySelector('#choreReward').value='';
+          // re-render chores
+          const list = document.getElementById('choreList');
+          if(list){ list.innerHTML=''; }
+        };
+      }
+      // attach delete buttons and polish labels
+      Array.from(ul.children).forEach(li=>{
+        if(!li.querySelector('[data-act="del-chore"]')){
+          const del = document.createElement('button');
+          del.className = 'btn danger';
+          del.textContent = 'けす';
+          del.setAttribute('data-act','del-chore');
+          del.style.marginLeft = '8px';
+          del.onclick = ()=>{
+            const nameEl = li.querySelector('.note');
+            const name = nameEl ? nameEl.textContent : '';
+            const target = state.chores.find(c=>c.name===name);
+            if(!target) return;
+            if(!confirm('このおてつだいをけしますか？')) return;
+            state.chores = state.chores.filter(c=>c.id!==target.id);
+            save();
+            const list = document.getElementById('choreList');
+            if(list){ list.removeChild(li); }
+          };
+          li.appendChild(del);
+        }
+        const firstBtn = li.querySelector('button');
+        if(firstBtn && !firstBtn.getAttribute('data-labeled')){
+          firstBtn.textContent = 'やった！';
+          firstBtn.setAttribute('data-labeled','1');
+        }
+      });
+    }catch{}
+  }
+
+  function setupEnhancers(){
+    try{
+      const tx = document.getElementById('txList');
+      if(tx){
+        const obs1 = new MutationObserver(()=> enhanceTransactionsUI());
+        obs1.observe(tx, { childList:true });
+        enhanceTransactionsUI();
+      }
+      const ch = document.getElementById('choreList');
+      if(ch){
+        const obs2 = new MutationObserver(()=> enhanceChoresUI());
+        obs2.observe(ch, { childList:true });
+        enhanceChoresUI();
+      }
+    }catch{}
+  }
+  setupEnhancers();
+
 })();
