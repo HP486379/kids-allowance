@@ -507,37 +507,6 @@
   function validAmount(n){ return Number.isFinite(n) && n>0 && n<=1_000_000 }
   function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])) }
 
-  // ===== Multiple Profiles Support =====
-  // Store per-person data under keys: `${LS_BASE}:${id}` and meta at `${LS_BASE}:meta`
-  const LS_BASE = 'kid-allowance-v1';
-  const LS_META = LS_BASE + ':meta';
-  function loadMeta(){ try{ return JSON.parse(localStorage.getItem(LS_META) || ''); }catch{ return null } }
-  function saveMeta(meta){ localStorage.setItem(LS_META, JSON.stringify(meta)); }
-  function ensureMeta(){
-    let meta = loadMeta();
-    if(!meta || !Array.isArray(meta.profiles) || meta.profiles.length===0){
-      const pid = id();
-      meta = { profiles:[{ id:pid, name:'なまえ', key: `${LS_BASE}:${pid}` }], currentId: pid };
-      saveMeta(meta);
-      // seed first profile if empty
-      if(!localStorage.getItem(meta.profiles[0].key)){
-        localStorage.setItem(meta.profiles[0].key, JSON.stringify(initialState()));
-      }
-    }
-    return meta;
-  }
-  let META = ensureMeta();
-  function activeKey(){ return `${LS_BASE}:${META.currentId}` }
-  function activeProfile(){ return META.profiles.find(p=>p.id===META.currentId) }
-
-  // Override persistence funcs to be profile-aware
-  function save(){ localStorage.setItem(activeKey(), JSON.stringify(state)); }
-  function load(){ try{ return JSON.parse(localStorage.getItem(activeKey()) || ''); }catch{ return null } }
-  function seed(){ const st = initialState(); localStorage.setItem(activeKey(), JSON.stringify(st)); return st; }
-
-  // Ensure current `state` is bound to active profile
-  try{ state = load() || seed(); }catch{}
-
   // ----- Init -----
   renderAll();
   // Localize key labels to fix mojibake in UI
@@ -661,93 +630,8 @@
         obs2.observe(ch, { childList:true });
         enhanceChoresUI();
       }
-      // Settings view: profiles and reset override
-      const settings = document.getElementById('view-settings');
-      if(settings){
-        const obs3 = new MutationObserver(()=> enhanceProfilesUI());
-        obs3.observe(settings, { childList:true, subtree:true });
-        enhanceProfilesUI();
-      }
     }catch{}
   }
   setupEnhancers();
-
-  function enhanceProfilesUI(){
-    try{
-      const container = document.querySelector('#view-settings .card');
-      if(!container) return;
-      if(!document.getElementById('profileRow')){
-        const row = document.createElement('div');
-        row.id = 'profileRow';
-        row.className = 'field-row';
-        row.style.marginBottom = '8px';
-        row.innerHTML = `
-          <label>ひと</label>
-          <select id="profileSelect" class="input" style="min-width:160px"></select>
-          <button id="addProfileBtn" class="btn">追加</button>
-          <button id="renameProfileBtn" class="btn">なまえ変更</button>
-          <button id="deleteProfileBtn" class="btn danger">けす</button>
-        `;
-        container.insertBefore(row, container.firstChild);
-      }
-      // populate select
-      const sel = document.getElementById('profileSelect');
-      if(sel){
-        sel.innerHTML = '';
-        META.profiles.forEach(p=>{
-          const opt = document.createElement('option');
-          opt.value = p.id; opt.textContent = p.name || 'なまえ';
-          if(p.id===META.currentId) opt.selected = true;
-          sel.appendChild(opt);
-        });
-        sel.onchange = ()=>{
-          META.currentId = sel.value; saveMeta(META);
-          try{ state = load() || seed(); }catch{}
-          renderAll();
-        };
-      }
-      // buttons
-      const addBtn = document.getElementById('addProfileBtn');
-      if(addBtn){ addBtn.onclick = ()=>{
-        const name = prompt('なまえ'); if(!name) return;
-        const pid = id();
-        META.profiles.push({ id:pid, name, key: `${LS_BASE}:${pid}` });
-        META.currentId = pid; saveMeta(META);
-        state = initialState(); state.childName = name; save();
-        renderAll();
-      }}
-      const renBtn = document.getElementById('renameProfileBtn');
-      if(renBtn){ renBtn.onclick = ()=>{
-        const p = activeProfile(); if(!p) return;
-        const name = prompt('なまえ', p.name)||p.name;
-        p.name = name; saveMeta(META);
-        const opt = document.querySelector(`#profileSelect option[value="${p.id}"]`);
-        if(opt) opt.textContent = name;
-        state.childName = name; save(); renderHeader();
-      }}
-      const delBtn = document.getElementById('deleteProfileBtn');
-      if(delBtn){ delBtn.onclick = ()=>{
-        if(META.profiles.length<=1){ alert('これ以上けせません'); return; }
-        const p = activeProfile(); if(!p) return;
-        if(!confirm('このひとをけしますか？')) return;
-        try{ localStorage.removeItem(p.key); }catch{}
-        META.profiles = META.profiles.filter(x=>x.id!==p.id);
-        META.currentId = META.profiles[0].id; saveMeta(META);
-        state = load() || seed();
-        renderAll();
-      }}
-
-      // Reset override (ensure profile-aware)
-      const resetBtn = document.getElementById('resetData');
-      if(resetBtn){ resetBtn.onclick = ()=>{
-        if(confirm('データをぜんぶけします。よろしいですか？')){
-          localStorage.removeItem(activeKey());
-          state = seed();
-          renderAll();
-          toast('リセットしました');
-        }
-      } }
-    }catch{}
-  }
 
 })();
