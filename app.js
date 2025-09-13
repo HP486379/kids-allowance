@@ -358,6 +358,26 @@
       };
     };
 
+    // Move Save button to settings: remove header actions if present
+    try{ const ha = document.getElementById('headerActions'); if(ha) ha.remove(); }catch{}
+
+    // Add a Save button in settings (next to export/import)
+    try {
+      const exportBtn = document.getElementById('exportData');
+      if (exportBtn) {
+        let saveBtn = document.getElementById('saveNowSettings');
+        if (!saveBtn) {
+          saveBtn = document.createElement('button');
+          saveBtn.id = 'saveNowSettings';
+          saveBtn.className = 'btn primary';
+          saveBtn.type = 'button';
+          saveBtn.textContent = '保存';
+          exportBtn.parentElement.insertBefore(saveBtn, exportBtn);
+        }
+        saveBtn.onclick = () => { save(); toast('保存しました'); };
+      }
+    } catch {}
+
     // Header quick edits
     $('#childName').oninput = (e)=>{ state.childName = e.target.value; save(); $('#settingsName').value = state.childName; };
     $('#avatarButton').onclick = ()=>{
@@ -489,4 +509,22 @@
 
   // ----- Init -----
   renderAll();
+  // Localize key labels to fix mojibake in UI
+  (function(){
+    try{
+      document.title = 'キッズポケット お小遣いアプリ';
+      const tabMap = { home:'ホーム', transactions:'おこづかい', goals:'もくひょう', chores:'おてつだい', settings:'せってい' };
+      document.querySelectorAll('.tab').forEach(btn=>{ const key=btn.dataset.tab; if(tabMap[key]) btn.textContent = tabMap[key]; });
+      const bl = document.querySelector('.balance-label'); if(bl) bl.textContent='いまのざんだか';
+      // Home card titles
+      const titles = document.querySelectorAll('#view-home .card .card-title');
+      if(titles[0]) titles[0].textContent = 'さいきんのうごき';
+      if(titles[1]) titles[1].textContent = 'クイック追加';
+      // Settings backup section title and buttons
+      const backupTitle = Array.from(document.querySelectorAll('#view-settings .card .card-title')).find(el=>el && el.textContent && el.textContent.includes('バック'));
+      if(backupTitle) backupTitle.textContent = 'バックアップ';
+      const ex = document.getElementById('exportData'); if(ex) ex.textContent = 'エクスポート';
+      const im = document.getElementById('importData'); if(im) im.textContent = 'インポート';
+    }catch{}
+  })();
 })();
