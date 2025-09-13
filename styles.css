@@ -205,6 +205,10 @@ body.modal-open::after{ content:""; position:fixed; inset:0; background:#0006; z
 @media (max-width:540px){
   .balance{ font-size:32px }
   .avatar{ width:48px; height:48px; font-size:28px }
+  /* Avoid piggy overlapping balance on small screens */
+  .piggy-wrap{ position:static; right:auto; bottom:auto; justify-self:center; margin-top:6px }
+  .piggy{ transform: scale(.8); transform-origin:center bottom }
+  .balance-card{ padding-right:12px }
 }
 
 /* Focus visibility for controller/keyboard */
