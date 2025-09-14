@@ -1,4 +1,4 @@
-// キッズぽけっと｜お小遣い管理
+﻿// キッズぽけっと｜お小遣い管理
 // 依存なしのバニラJS。データは localStorage に保存。
 
 (function(){
@@ -329,7 +329,23 @@
           toast('インポートしました');
           closeModal($('#ioDialog'));
         }catch{ toast('JSONを確認してください'); }
-      };
+      
+    // Settings: add Save button next to Export/Import
+    try {
+      const exportBtn = document.getElementById('exportData');
+      if (exportBtn) {
+        let saveBtn = document.getElementById('saveNowSettings');
+        if (!saveBtn) {
+          saveBtn = document.createElement('button');
+          saveBtn.id = 'saveNowSettings';
+          saveBtn.className = 'btn primary';
+          saveBtn.type = 'button';
+          saveBtn.textContent = '\u4FDD\u5B58'; // 保存
+          exportBtn.parentElement.insertBefore(saveBtn, exportBtn);
+        }
+        saveBtn.onclick = () => { save(); toast('\u4FDD\u5B58\u3057\u307E\u3057\u305F'); };
+      }
+    } catch {}};
     };
 
     // Header quick edits
@@ -464,3 +480,4 @@
   // ----- Init -----
   renderAll();
 })();
+
