@@ -238,8 +238,8 @@
     };
   }
 
-    function renderChores(){
-    const ul = document.getElementById('choreList');
+    
+    ensureChoreAdder();
     ul.innerHTML = '';
     if (state.chores.length === 0) {
       const li = document.createElement('li');
@@ -541,3 +541,32 @@
 
 
 
+
+  // Add chore-adder row above the list
+  function ensureChoreAdder(){
+    try{
+      var ul = document.getElementById('choreList'); if(!ul) return;
+      var card = ul.closest ? ul.closest('.card') : ul.parentElement; if(!card) return;
+      if(document.getElementById('choreAddRow')) return;
+      var row = document.createElement('div');
+      row.id = 'choreAddRow';
+      row.className = 'field-row';
+      row.style.marginBottom = '10px';
+      var name = document.createElement('input');
+      name.id = 'choreName'; name.className = 'input'; name.placeholder = '\u304a\u3066\u3064\u3060\u3044\u306e\u306a\u307e\u3048'; name.style.flex='1';
+      var reward = document.createElement('input');
+      reward.id = 'choreReward'; reward.className = 'input'; reward.inputMode='numeric'; reward.pattern='[0-9]*'; reward.placeholder='\u3054\u307B\u3046\u3073 (\u00A5)'; reward.style.width='140px';
+      var addBtn = document.createElement('button');
+      addBtn.id='addChoreBtn'; addBtn.className='btn primary'; addBtn.type='button'; addBtn.textContent='\u8FFD\u52A0';
+      row.appendChild(name); row.appendChild(reward); row.appendChild(addBtn);
+      card.insertBefore(row, ul);
+      addBtn.onclick = function(){
+        var nm = (name.value||'').trim();
+        var amt = parseAmount(reward.value||'');
+        if(!nm) return toast('\u306A\u307E\u3048\u3092\u3044\u308C\u3066\u306D');
+        if(!validAmount(amt)) return toast('\u91D1\u984D\u3092\u6B63\u3057\u304F\u5165\u308C\u3066\u306D');
+        state.chores.push({ id:id(), name:nm, reward:amt, lastDone:'' });
+        save(); name.value=''; reward.value=''; renderChores();
+      };
+    }catch(e){}
+  }
