@@ -69,7 +69,7 @@
   function renderHeader(){
     $('#avatarButton').textContent = state.avatar;
     $('#childName').value = state.childName || '';
-    $('#balance').textContent = money(computeBalance());
+    document.getElementById('balance').textContent = money(computeBalance());
   }
 
   function renderTabs(){
@@ -358,7 +358,7 @@
     const t = { id:id(), type, amount:Math.round(amount), note, dateISO:new Date().toISOString() };
     state.transactions.push(t);
     save();
-    $('#balance').textContent = money(computeBalance());
+    document.getElementById('balance').textContent = money(computeBalance());
     renderHome();
     renderTransactions();
     if(type==='income' || type==='chore'){
@@ -536,5 +536,6 @@
   // ----- Init -----
   renderAll();
 })();
+
 
 
