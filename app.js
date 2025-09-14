@@ -1,5 +1,5 @@
-﻿// 繧ｭ繝・ぜ縺ｽ縺代▲縺ｨ・懊♀蟆城▲縺・ｮ｡逅・
-// 萓晏ｭ倥↑縺励・繝舌ル繝ｩJS縲ゅョ繝ｼ繧ｿ縺ｯ localStorage 縺ｫ菫晏ｭ倥・
+// キッズぽけっと｜お小遣い管理
+// 依存なしのバニラJS。データは localStorage に保存。
 
 (function(){
   const LS_KEY = 'kid-allowance-v1';
@@ -9,12 +9,16 @@
   // ----- State -----
   const initialState = () => ({
     childName: '',
-    avatar: '製',
-    currency: 'ﾂ･',
+    avatar: '🐻',
+    currency: '¥',
     theme: 'cute', // 'cute' | 'adventure'
     transactions: [], // {id, type:income|expense|goal|chore, amount, note, dateISO}
     goals: [], // {id, name, target, saved}
-    chores: [\r\n      { id: id(), name:'ベッドをととのえる', reward:100, lastDone:'' },\r\n      { id: id(), name:'しょるいをかたづける', reward:100, lastDone:'' },\r\n      { id: id(), name:'しょくだい', reward:150, lastDone:'' },\r\n    ],
+    chores: [
+      { id: id(), name:'ベッドをととのえる', reward:100, lastDone:'' },
+      { id: id(), name:'しょるいをかたづける', reward:100, lastDone:'' },
+      { id: id(), name:'しょくだい', reward:150, lastDone:'' },
+    ],
   });
 
   let state = load() || seed();
@@ -34,8 +38,8 @@
     const st = initialState();
     st.childName = 'なまえ';
     st.transactions = [
-      { id:id(), type:'income', amount:300, note:'縺ｯ縺倥ａ縺ｦ縺ｮ縺翫％縺･縺九＞', dateISO:new Date().toISOString() },
-      { id:id(), type:'expense', amount:120, note:'縺翫ｄ縺､', dateISO:new Date().toISOString() },
+      { id:id(), type:'income', amount:300, note:'はじめてのおこづかい', dateISO:new Date().toISOString() },
+      { id:id(), type:'expense', amount:120, note:'おやつ', dateISO:new Date().toISOString() },
     ];
     st.goals = [ { id:id(), name:'レゴ', target:2000, saved:300 } ];
     localStorage.setItem(LS_KEY, JSON.stringify(st));
@@ -105,10 +109,10 @@
     const recent = [...state.transactions].sort((a,b)=>b.dateISO.localeCompare(a.dateISO)).slice(0,6);
     const ul = $('#recentList');
     ul.innerHTML = '';
-    if(recent.length===0){ ul.innerHTML = '<li>縺ｾ縺縺ｪ縺・ｈ</li>'; }
+    if(recent.length===0){ ul.innerHTML = '<li>まだないよ</li>'; }
     recent.forEach(t=>{
       const li = document.createElement('li');
-      const icon = t.type==='income' || t.type==='chore' ? '・・ : '竏・;
+      const icon = t.type==='income' || t.type==='chore' ? '＋' : '−';
       const col = t.type==='income' || t.type==='chore' ? 'good' : 'bad';
       li.innerHTML = `
         <div>
@@ -121,16 +125,16 @@
     });
 
     // quick buttons
-    $('#quickAdd100').onclick = ()=> addTx('income', 100, '繝励メ縺翫％縺･縺九＞', true);
-    $('#quickAdd300').onclick = ()=> addTx('income', 300, '縺翫％縺･縺九＞', true);
-    $('#quickSnack').onclick = ()=> addTx('expense', 150, '縺翫ｄ縺､', true);
+    $('#quickAdd100').onclick = ()=> addTx('income', 100, 'プチおこづかい', true);
+    $('#quickAdd300').onclick = ()=> addTx('income', 300, 'おこづかい', true);
+    $('#quickSnack').onclick = ()=> addTx('expense', 150, 'おやつ', true);
 
     $('#quickForm').onsubmit = (e)=>{
       e.preventDefault();
       const type = $('#quickType').value;
       const amount = parseAmount($('#quickAmount').value);
       const note = $('#quickNote').value.trim();
-      if(!validAmount(amount)) return toast('驥鷹｡阪ｒ豁｣縺励￥蜈･繧後※縺ｭ');
+      if(!validAmount(amount)) return toast('金額を正しく入れてね');
       addTx(type, amount, note || labelForType(type), true);
       $('#quickAmount').value = '';
       $('#quickNote').value = '';
@@ -144,7 +148,7 @@
       list.innerHTML = '';
       let items = [...state.transactions].sort((a,b)=>b.dateISO.localeCompare(a.dateISO));
       if(filter.value!=='all') items = items.filter(t=>t.type===filter.value);
-      if(items.length===0){ list.innerHTML = '<li>縺ｾ縺縺ｪ縺・ｈ</li>'; return; }
+      if(items.length===0){ list.innerHTML = '<li>まだないよ</li>'; return; }
       items.forEach(t=>{
         const li = document.createElement('li');
         const isPlus = t.type==='income' || t.type==='chore';
@@ -153,7 +157,7 @@
             <div class="note">${escapeHtml(t.note||labelForType(t.type))}</div>
             <div class="meta">${dateJa(t.dateISO)}</div>
           </div>
-          <div class="amount ${isPlus?'good':'bad'}">${isPlus?'+':'竏・}${money(t.amount)}</div>
+          <div class="amount ${isPlus?'good':'bad'}">${isPlus?'+':'−'}${money(t.amount)}</div>
         `;
         list.appendChild(li);
       });
@@ -167,7 +171,7 @@
       const type = $('#txType').value;
       const amount = parseAmount($('#txAmount').value);
       const note = $('#txNote').value.trim();
-      if(!validAmount(amount)) return toast('驥鷹｡阪ｒ豁｣縺励￥蜈･繧後※縺ｭ');
+      if(!validAmount(amount)) return toast('金額を正しく入れてね');
       addTx(type, amount, note || labelForType(type), true);
       closeModal($('#txDialog'));
       e.target.reset();
@@ -181,7 +185,7 @@
     if(state.goals.length===0){
       const empty = document.createElement('div');
       empty.className='card';
-      empty.textContent = '縺ｾ縺繧ゅ￥縺ｲ繧・≧縺後↑縺・ｈ縲ゅ▽縺上▲縺ｦ縺ｿ繧医≧・・;
+      empty.textContent = 'まだもくひょうがないよ。つくってみよう！';
       wrap.appendChild(empty);
     } else {
       state.goals.forEach(g=>{
@@ -196,9 +200,9 @@
             <div class="goal-name">${escapeHtml(g.name)}</div>
             <div class="meta">${money(g.saved)} / ${money(g.target)}</div>
             <div class="goal-actions">
-              <button class="btn primary" data-act="save">縺｡繧・″繧薙☆繧・/button>
-              <button class="btn" data-act="edit">螟画峩</button>
-              <button class="btn danger" data-act="delete">縺代☆</button>
+              <button class="btn primary" data-act="save">ちょきんする</button>
+              <button class="btn" data-act="edit">変更</button>
+              <button class="btn danger" data-act="delete">けす</button>
             </div>
           </div>
         `;
@@ -210,10 +214,10 @@
         delBtn.onclick = ()=> deleteGoal(g);
 
         if(g.saved >= g.target){
-          // 螳御ｺ・ヰ繝・ず
+          // 完了バッジ
           const done = document.createElement('div');
           done.className = 'meta';
-          done.textContent = '縺翫ａ縺ｧ縺ｨ縺・ｼ・繧ゅ￥縺ｲ繧・≧ 縺溘▲縺帙＞・・;
+          done.textContent = 'おめでとう！ もくひょう たっせい！';
           card.appendChild(done);
         }
       });
@@ -224,8 +228,8 @@
       e.preventDefault();
       const name = $('#goalName').value.trim();
       const target = parseAmount($('#goalTarget').value);
-      if(!name) return toast('縺ｪ縺ｾ縺医ｒ縺・ｌ縺ｦ縺ｭ');
-      if(!validAmount(target)) return toast('逶ｮ讓咎≡鬘阪ｒ豁｣縺励￥蜈･繧後※縺ｭ');
+      if(!name) return toast('なまえをいれてね');
+      if(!validAmount(target)) return toast('目標金額を正しく入れてね');
       state.goals.push({ id:id(), name, target, saved:0 });
       save();
       closeModal($('#goalDialog'));
@@ -237,7 +241,7 @@
   function renderChores(){
     const ul = $('#choreList');
     ul.innerHTML = '';
-    if(state.chores.length===0){ ul.innerHTML = '<li>縺ｾ縺縺ｪ縺・ｈ</li>'; return; }
+    if(state.chores.length===0){ ul.innerHTML = '<li>まだないよ</li>'; return; }
     state.chores.forEach(ch=>{
       const doneToday = ch.lastDone === today();
       const li = document.createElement('li');
@@ -245,15 +249,15 @@
       li.innerHTML = `
         <div>
           <div class="note">${escapeHtml(ch.name)}</div>
-          <div class="meta">縺斐⊇縺・・: ${money(ch.reward)} ${doneToday ? '・医″繧・≧縺ｯOK・・ｼ・ : ''}</div>
+          <div class="meta">ごほうび: ${money(ch.reward)} ${doneToday ? '（きょうはOK！）' : ''}</div>
         </div>
-        <button ${doneToday?'disabled':''}>繧・▲縺滂ｼ・/button>
+        <button ${doneToday?'disabled':''}>やった！</button>
       `;
       const btn = $('button', li);
       btn.onclick = ()=>{
         if(ch.lastDone === today()) return;
         ch.lastDone = today();
-        addTx('chore', ch.reward, `縺翫※縺､縺縺・ ${ch.name}`, true);
+        addTx('chore', ch.reward, `おてつだい: ${ch.name}`, true);
         save();
         renderChores();
       };
@@ -289,29 +293,29 @@
       renderSettings(); // refresh avatar pack
     };
     $('#resetData').onclick = ()=>{
-      if(confirm('繝・・繧ｿ繧偵●繧薙・縺代＠縺ｾ縺吶ゅｈ繧阪＠縺・〒縺吶°・・)){
+      if(confirm('データをぜんぶけします。よろしいですか？')){
         localStorage.removeItem(LS_KEY);
         state = seed();
         renderAll();
-        toast('繝ｪ繧ｻ繝・ヨ縺励∪縺励◆');
+        toast('リセットしました');
       }
     };
     // Export / Import
     $('#exportData').onclick = async ()=>{
       const json = JSON.stringify(state, null, 2);
-      $('#ioTitle').textContent = '繧ｨ繧ｯ繧ｹ繝昴・繝・;
-      $('#ioOk').textContent = '繧ｳ繝斐・';
+      $('#ioTitle').textContent = 'エクスポート';
+      $('#ioOk').textContent = 'コピー';
       $('#ioText').value = json;
       openModal($('#ioDialog'));
       $('#ioOk').onclick = (ev)=>{
         ev.preventDefault();
-        try{ navigator.clipboard.writeText($('#ioText').value); toast('繧ｯ繝ｪ繝・・繝懊・繝峨↓繧ｳ繝斐・縺励∪縺励◆'); }catch{ toast('繧ｳ繝斐・縺ｧ縺阪↑縺・ｴ蜷医・謇句虚縺ｧ驕ｸ謚槭＠縺ｦ縺上□縺輔＞'); }
+        try{ navigator.clipboard.writeText($('#ioText').value); toast('クリップボードにコピーしました'); }catch{ toast('コピーできない場合は手動で選択してください'); }
         closeModal($('#ioDialog'));
       };
     };
     $('#importData').onclick = ()=>{
-      $('#ioTitle').textContent = '繧､繝ｳ繝昴・繝・;
-      $('#ioOk').textContent = '隱ｭ縺ｿ霎ｼ縺ｿ';
+      $('#ioTitle').textContent = 'インポート';
+      $('#ioOk').textContent = '読み込み';
       $('#ioText').value = '';
       openModal($('#ioDialog'));
       $('#ioOk').onclick = (ev)=>{
@@ -322,9 +326,9 @@
           state = { ...initialState(), ...obj };
           save();
           renderAll();
-          toast('繧､繝ｳ繝昴・繝医＠縺ｾ縺励◆');
+          toast('インポートしました');
           closeModal($('#ioDialog'));
-        }catch{ toast('JSON繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞'); }
+        }catch{ toast('JSONを確認してください'); }
       };
     };
 
@@ -353,25 +357,25 @@
 
   function contributeToGoal(goal){
     const max = computeBalance();
-    if(max<=0) return toast('縺ｾ縺壹・縺翫％縺･縺九＞繧偵◆繧√ｈ縺・ｼ・);
-    const val = prompt(`縺・￥繧峨■繧・″繧薙☆繧具ｼ滂ｼ域怙螟ｧ ${money(max)}・荏, Math.min(300, max).toString());
+    if(max<=0) return toast('まずはおこづかいをためよう！');
+    const val = prompt(`いくらちょきんする？（最大 ${money(max)}）`, Math.min(300, max).toString());
     const amount = parseAmount(val||'');
     if(!validAmount(amount)) return;
-    if(amount>max) return toast('縺悶ｓ縺縺九ｈ繧翫♀縺翫＞繧・);
+    if(amount>max) return toast('ざんだかよりおおいよ');
     goal.saved += amount;
-    addTx('goal', amount, `縺｡繧・″繧・ ${goal.name}`);
+    addTx('goal', amount, `ちょきん: ${goal.name}`);
     save();
     renderGoals();
     if(goal.saved >= goal.target){
       confetti();
-      toast('縺翫ａ縺ｧ縺ｨ縺・ｼ・繧ゅ￥縺ｲ繧・≧ 縺溘▲縺帙＞・・);
+      toast('おめでとう！ もくひょう たっせい！');
     }
   }
 
   function editGoal(goal){
-    const name = prompt('縺ｪ縺ｾ縺・, goal.name)||goal.name;
-    const target = parseAmount(prompt('逶ｮ讓咎≡鬘・, String(goal.target))||String(goal.target));
-    if(!validAmount(target)) return toast('逶ｮ讓咎≡鬘阪ｒ豁｣縺励￥蜈･繧後※縺ｭ');
+    const name = prompt('なまえ', goal.name)||goal.name;
+    const target = parseAmount(prompt('目標金額', String(goal.target))||String(goal.target));
+    if(!validAmount(target)) return toast('目標金額を正しく入れてね');
     goal.name = name.trim()||goal.name;
     goal.target = target;
     save();
@@ -379,7 +383,7 @@
   }
 
   function deleteGoal(goal){
-    if(!confirm('繧ゅ￥縺ｲ繧・≧繧偵￠縺励∪縺吶°・・)) return;
+    if(!confirm('もくひょうをけしますか？')) return;
     state.goals = state.goals.filter(g=>g.id!==goal.id);
     save();
     renderGoals();
@@ -433,9 +437,9 @@
   }
   function getAvatarChoices(){
     if(state.theme==='adventure'){
-      return ['噫','嶌','､・,'ｦ・,'峅・・,'笞ｽ','式','ｧｭ','孱・・,'裡・・,'ｧｱ','栖'];
+      return ['🚀','🛸','🤖','🦖','🛰️','⚽','🎮','🧭','🛡️','🗡️','🧱','🐲'];
     }
-    return ['製','棲','星','晴','西','ｦ・,'勢','ｦ・,'瀬','牲','生','精'];
+    return ['🐻','🐱','🐯','🐰','🐼','🦊','🐨','🦄','🐣','🐵','🐶','🐸'];
   }
   function dateJa(iso){
     try{
@@ -447,7 +451,7 @@
     }catch{ return '' }
   }
   function labelForType(type){
-    return type==='income' ? '縺翫％縺･縺九＞' : type==='expense' ? '縺翫°縺・ｂ縺ｮ' : type==='goal' ? '縺｡繧・″繧・ : '縺翫※縺､縺縺・;
+    return type==='income' ? 'おこづかい' : type==='expense' ? 'おかいもの' : type==='goal' ? 'ちょきん' : 'おてつだい';
   }
   function parseAmount(v){
     if(typeof v !== 'string') return 0;
@@ -457,61 +461,6 @@
   function validAmount(n){ return Number.isFinite(n) && n>0 && n<=1_000_000 }
   function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])) }
 
-  // Chore button binder (robust against innerHTML encoding issues)
-  function bindChoreButtons(){
-    try{
-      const ul = document.getElementById('choreList');
-      if(!ul) return;
-      const lis = ul.querySelectorAll('li');
-      lis.forEach((li, idx)=>{
-        const ch = state.chores[idx];
-        if(!ch) return;
-        let btn = li.querySelector('button');
-        if(!btn){
-          btn = document.createElement('button');
-          li.appendChild(btn);
-        }
-        btn.textContent = '繧・▲縺滂ｼ・;
-        btn.classList.add('btn','good');
-        btn.disabled = (ch.lastDone === today());
-        btn.onclick = ()=>{
-          if(ch.lastDone === today()) return;
-          ch.lastDone = today();
-          addTx('chore', ch.reward, `縺翫※縺､縺縺・${ch.name}`, true);
-          save();
-          renderChores();
-          bindChoreButtons();
-        };
-      });
-    }catch{}
-  }
-
-  // Remove visual "（きょうはOK！）" from chore meta if present (UI only)
-  function stripChoreOkText(){
-    try{
-      document.querySelectorAll('#choreList .meta').forEach(el=>{
-        el.textContent = (el.textContent||'')
-          .replace(/（きょうはOK！）/g, '')
-          .replace(/\(きょうはOK!\)/g, '');
-      });
-    }catch{}
-  }
-
-  function setupChoreBinding(){
-    const ul = document.getElementById('choreList');
-    if(!ul) return;
-    const ob = new MutationObserver(()=> { bindChoreButtons(); stripChoreOkText(); });
-    ob.observe(ul, { childList:true });
-    bindChoreButtons();
-    stripChoreOkText();
-  }
-
   // ----- Init -----
   renderAll();
-  // ensure chore buttons always wired
-  setupChoreBinding();
 })();
-
-
-
-
