@@ -1,4 +1,4 @@
-// キッズぽけっと｜お小遣い管理
+﻿// キッズぽけっと｜お小遣い管理
 // 依存なしのバニラJS。データは localStorage に保存。
 
 (function(){
@@ -21,7 +21,7 @@
     ],
   });
 
-  let state = load() || seed();
+  \n\n  // Editing state for transactions\n  let editingTxId = null;
 
   // ----- Utils -----
   function id(){ return Math.random().toString(36).slice(2,9) }
@@ -635,3 +635,4 @@
   setupEnhancers();
 
 })();
+
