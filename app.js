@@ -14,11 +14,7 @@
     theme: 'cute', // 'cute' | 'adventure'
     transactions: [], // {id, type:income|expense|goal|chore, amount, note, dateISO}
     goals: [], // {id, name, target, saved}
-    chores: [
-      { id: id(), name:'繝吶ャ繝峨ｒ縺ｨ縺ｨ縺ｮ縺医ｋ', reward:100, lastDone:'' },
-      { id: id(), name:'縺励ｇ繧九＞繧偵°縺溘▼縺代ｋ', reward:100, lastDone:'' },
-      { id: id(), name:'しょくだい', reward:150, lastDone:'' },
-    ],
+    chores: [\r\n      { id: id(), name:'ベッドをととのえる', reward:100, lastDone:'' },\r\n      { id: id(), name:'しょるいをかたづける', reward:100, lastDone:'' },\r\n      { id: id(), name:'しょくだい', reward:150, lastDone:'' },\r\n    ],
   });
 
   let state = load() || seed();
@@ -41,7 +37,7 @@
       { id:id(), type:'income', amount:300, note:'縺ｯ縺倥ａ縺ｦ縺ｮ縺翫％縺･縺九＞', dateISO:new Date().toISOString() },
       { id:id(), type:'expense', amount:120, note:'縺翫ｄ縺､', dateISO:new Date().toISOString() },
     ];
-    st.goals = [ { id:id(), name:'繝ｬ繧ｴ', target:2000, saved:300 } ];
+    st.goals = [ { id:id(), name:'レゴ', target:2000, saved:300 } ];
     localStorage.setItem(LS_KEY, JSON.stringify(st));
     return st;
   }
@@ -515,4 +511,7 @@
   // ensure chore buttons always wired
   setupChoreBinding();
 })();
+
+
+
 
