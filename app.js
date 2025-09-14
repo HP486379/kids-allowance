@@ -347,8 +347,11 @@
       }
     } catch {}};
     };
-
-    // Header quick edits
+    // Ensure Settings Save button is bound
+    try {
+      const saveBtn = document.getElementById('saveNowSettings');
+      if (saveBtn) saveBtn.onclick = () => { try{ save(); toast('保存しました'); }catch{ alert('保存しました'); } };
+    } catch {}
     $('#childName').oninput = (e)=>{ state.childName = e.target.value; save(); $('#settingsName').value = state.childName; };
     $('#avatarButton').onclick = ()=>{
       // cycle avatar
@@ -480,4 +483,5 @@
   // ----- Init -----
   renderAll();
 })();
+
 
