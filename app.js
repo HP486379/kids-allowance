@@ -239,7 +239,7 @@
   }
 
     function renderChores(){
-    const ul = #choreList;
+    const ul = document.getElementById('choreList');
     ul.innerHTML = '';
     if (state.chores.length === 0) {
       const li = document.createElement('li');
@@ -536,6 +536,7 @@
   // ----- Init -----
   renderAll();
 })();
+
 
 
 
