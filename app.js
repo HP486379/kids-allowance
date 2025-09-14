@@ -261,10 +261,7 @@
         save();
         renderChores();
       };
-      ul.appendChild(li);
-    });
-  }
-
+          bindChoreControls();\r\n  }\r\n
   function renderSettings(){
     $('#settingsName').value = state.childName;
     $('#currency').value = state.currency;
@@ -480,8 +477,70 @@
   function validAmount(n){ return Number.isFinite(n) && n>0 && n<=1_000_000 }
   function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])) }
 
+  // ----- Chore controls (undo & clear today) -----
+  function isTodayISO(iso){ try{ return (iso||'').slice(0,10) === today(); }catch{ return false } }
+  function removeLastChoreTxFor(name){
+    for(let i=state.transactions.length-1;i>=0;i--){
+      const t = state.transactions[i];
+      if(t && t.type==='chore' && isTodayISO(t.dateISO) && (t.note||'').includes(name)){
+        state.transactions.splice(i,1);
+        return true;
+      }
+    }
+    return false;
+  }
+  function clearTodayChores(){
+    let changed=false;
+    state.chores.forEach(ch=>{ if(ch.lastDone===today()){ ch.lastDone=''; changed=true; } });
+    for(let i=state.transactions.length-1;i>=0;i--){
+      const t=state.transactions[i];
+      if(t && t.type==='chore' && isTodayISO(t.dateISO)){ state.transactions.splice(i,1); changed=true; }
+    }
+    if(changed){ save(); const b=document.getElementById('balance'); if(b) b.textContent = money(computeBalance()); renderChores(); }
+  }
+  function bindChoreControls(){
+    try{
+      const ul = document.getElementById('choreList'); if(!ul) return;
+      const lis = Array.from(ul.children);
+      lis.forEach((li, idx)=>{
+        const ch = state.chores[idx]; if(!ch) return;
+        let undo = li.querySelector('[data-act="undo-chore"]');
+        if(!undo){
+          undo = document.createElement('button');
+          undo.setAttribute('data-act','undo-chore');
+          undo.className = 'btn';
+          undo.style.marginLeft = '8px';
+          undo.textContent = '\u3082\u3069\u3059';
+          li.appendChild(undo);
+        }
+        undo.disabled = (ch.lastDone !== today());
+        undo.onclick = ()=>{
+          if(ch.lastDone !== today()) return;
+          removeLastChoreTxFor(ch.name);
+          ch.lastDone='';
+          save();
+          const b=document.getElementById('balance'); if(b) b.textContent = money(computeBalance());
+          renderChores();
+        };
+      });
+      const card = ul.closest('div.card');
+      if(card){
+        const title = card.querySelector('.card-title');
+        if(title && !card.querySelector('[data-act="clear-today"]')){
+          const clearBtn = document.createElement('button');
+          clearBtn.setAttribute('data-act','clear-today');
+          clearBtn.className = 'btn';
+          clearBtn.style.marginLeft = '8px';
+          clearBtn.textContent = '\u4ECA\u65E5\u3092\u30AF\u30EA\u30A2';
+          clearBtn.onclick = ()=>{ if(confirm('\u4ECA\u65E5\u306E\u5B9F\u884C\u5206\u3092\u30AF\u30EA\u30A2\u3057\u307E\u3059\u304B?')) clearTodayChores(); };
+          title.appendChild(clearBtn);
+        }
+      }
+    }catch{}
+  }
   // ----- Init -----
   renderAll();
 })();
+
 
 
