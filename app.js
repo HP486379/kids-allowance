@@ -261,7 +261,9 @@
         save();
         renderChores();
       };
-          bindChoreControls();\r\n  }\r\n
+          bindChoreControls();
+  }
+
   function renderSettings(){
     $('#settingsName').value = state.childName;
     $('#currency').value = state.currency;
@@ -326,29 +328,10 @@
           toast('インポートしました');
           closeModal($('#ioDialog'));
         }catch{ toast('JSONを確認してください'); }
-      
-    // Settings: add Save button next to Export/Import
-    try {
-      const exportBtn = document.getElementById('exportData');
-      if (exportBtn) {
-        let saveBtn = document.getElementById('saveNowSettings');
-        if (!saveBtn) {
-          saveBtn = document.createElement('button');
-          saveBtn.id = 'saveNowSettings';
-          saveBtn.className = 'btn primary';
-          saveBtn.type = 'button';
-          saveBtn.textContent = '\u4FDD\u5B58'; // 保存
-          exportBtn.parentElement.insertBefore(saveBtn, exportBtn);
-        }
-        saveBtn.onclick = () => { save(); toast('\u4FDD\u5B58\u3057\u307E\u3057\u305F'); };
-      }
-    } catch {}};
+      };
     };
-    // Ensure Settings Save button is bound
-    try {
-      const saveBtn = document.getElementById('saveNowSettings');
-      if (saveBtn) saveBtn.onclick = () => { try{ save(); toast('保存しました'); }catch{ alert('保存しました'); } };
-    } catch {}
+
+    // Header quick edits
     $('#childName').oninput = (e)=>{ state.childName = e.target.value; save(); $('#settingsName').value = state.childName; };
     $('#avatarButton').onclick = ()=>{
       // cycle avatar
@@ -482,7 +465,7 @@
   function removeLastChoreTxFor(name){
     for(let i=state.transactions.length-1;i>=0;i--){
       const t = state.transactions[i];
-      if(t && t.type==='chore' && isTodayISO(t.dateISO) && (t.note||'').includes(name)){
+      if(t && t.type==='chore' && isTodayISO(t.dateISO) && (t.note||'').indexOf(name) >= 0){
         state.transactions.splice(i,1);
         return true;
       }
@@ -496,15 +479,15 @@
       const t=state.transactions[i];
       if(t && t.type==='chore' && isTodayISO(t.dateISO)){ state.transactions.splice(i,1); changed=true; }
     }
-    if(changed){ save(); const b=document.getElementById('balance'); if(b) b.textContent = money(computeBalance()); renderChores(); }
+    if(changed){ save(); var b=document.getElementById('balance'); if(b) b.textContent = money(computeBalance()); renderChores(); }
   }
   function bindChoreControls(){
     try{
-      const ul = document.getElementById('choreList'); if(!ul) return;
-      const lis = Array.from(ul.children);
-      lis.forEach((li, idx)=>{
-        const ch = state.chores[idx]; if(!ch) return;
-        let undo = li.querySelector('[data-act="undo-chore"]');
+      var ul = document.getElementById('choreList'); if(!ul) return;
+      var lis = Array.prototype.slice.call(ul.children);
+      lis.forEach(function(li, idx){
+        var ch = state.chores[idx]; if(!ch) return;
+        var undo = li.querySelector('[data-act="undo-chore"]');
         if(!undo){
           undo = document.createElement('button');
           undo.setAttribute('data-act','undo-chore');
@@ -514,33 +497,31 @@
           li.appendChild(undo);
         }
         undo.disabled = (ch.lastDone !== today());
-        undo.onclick = ()=>{
+        undo.onclick = function(){
           if(ch.lastDone !== today()) return;
           removeLastChoreTxFor(ch.name);
           ch.lastDone='';
           save();
-          const b=document.getElementById('balance'); if(b) b.textContent = money(computeBalance());
+          var b=document.getElementById('balance'); if(b) b.textContent = money(computeBalance());
           renderChores();
         };
       });
-      const card = ul.closest('div.card');
+      var card = ul.closest ? ul.closest('.card') : ul.parentElement;
       if(card){
-        const title = card.querySelector('.card-title');
+        var title = card.querySelector ? card.querySelector('.card-title') : null;
         if(title && !card.querySelector('[data-act="clear-today"]')){
-          const clearBtn = document.createElement('button');
+          var clearBtn = document.createElement('button');
           clearBtn.setAttribute('data-act','clear-today');
           clearBtn.className = 'btn';
           clearBtn.style.marginLeft = '8px';
           clearBtn.textContent = '\u4ECA\u65E5\u3092\u30AF\u30EA\u30A2';
-          clearBtn.onclick = ()=>{ if(confirm('\u4ECA\u65E5\u306E\u5B9F\u884C\u5206\u3092\u30AF\u30EA\u30A2\u3057\u307E\u3059\u304B?')) clearTodayChores(); };
+          clearBtn.onclick = function(){ if(confirm('\u4ECA\u65E5\u306E\u5B9F\u884C\u5206\u3092\u30AF\u30EA\u30A2\u3057\u307E\u3059\u304B?')) clearTodayChores(); };
           title.appendChild(clearBtn);
         }
       }
-    }catch{}
+    }catch(e){}
   }
   // ----- Init -----
   renderAll();
 })();
-
-
 
