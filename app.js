@@ -238,33 +238,45 @@
     };
   }
 
-  function renderChores(){
-    const ul = $('#choreList');
+    function renderChores(){
+    const ul = #choreList;
     ul.innerHTML = '';
-    if(state.chores.length===0){ ul.innerHTML = '<li>まだないよ</li>'; return; }
-    state.chores.forEach(ch=>{
+    if (state.chores.length === 0) {
+      const li = document.createElement('li');
+      li.textContent = '\u307E\u3060\u306A\u3044\u3088'; // まだないよ
+      ul.appendChild(li);
+      return;
+    }
+    state.chores.forEach(ch => {
       const doneToday = ch.lastDone === today();
       const li = document.createElement('li');
       li.className = doneToday ? 'done' : '';
-      li.innerHTML = `
-        <div>
-          <div class="note">${escapeHtml(ch.name)}</div>
-          <div class="meta">ごほうび: ${money(ch.reward)} ${doneToday ? '（きょうはOK！）' : ''}</div>
-        </div>
-        <button ${doneToday?'disabled':''}>やった！</button>
-      `;
-      const btn = $('button', li);
-      btn.onclick = ()=>{
-        if(ch.lastDone === today()) return;
+      const left = document.createElement('div');
+      const note = document.createElement('div');
+      note.className = 'note';
+      note.textContent = ch.name;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = '\u3054\u307B\u3046\u3073: ' + money(ch.reward) + (doneToday ? ' (\u304D\u3087\u3046\u306FOK)' : '');
+      left.appendChild(note);
+      left.appendChild(meta);
+      const btn = document.createElement('button');
+      btn.className = 'btn good';
+      btn.textContent = '\u3084\u3063\u305F\uFF01';
+      if (doneToday) btn.disabled = true;
+      btn.onclick = () => {
+        if (ch.lastDone === today()) return;
         ch.lastDone = today();
-        addTx('chore', ch.reward, `おてつだい: ${ch.name}`, true);
+        addTx('chore', ch.reward, '\u304A\u3066\u3064\u3060\u3044 ' + ch.name, true);
         save();
         renderChores();
       };
-          bindChoreControls();
-  }
-
-  function renderSettings(){
+      li.appendChild(left);
+      li.appendChild(btn);
+      ul.appendChild(li);
+    });
+    bindChoreControls();
+  }function renderSettings(){
     $('#settingsName').value = state.childName;
     $('#currency').value = state.currency;
     $('#themeSelect').value = state.theme || 'cute';
@@ -524,4 +536,5 @@
   // ----- Init -----
   renderAll();
 })();
+
 
