@@ -271,7 +271,6 @@ function renderChores(){
     });
     try{ if(typeof bindChoreControls=== 'function') bindChoreControls(); }catch(e){}
   }
-  }
 function renderSettings(){
     $('#settingsName').value = state.childName;
     $('#currency').value = state.currency;
@@ -561,6 +560,7 @@ function bindChoreControls(){
       };
     }catch(e){}
   }
+
 
 
 
