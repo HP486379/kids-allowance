@@ -25,16 +25,16 @@
 
   // ----- Utils -----
   function id(){ return Math.random().toString(36).slice(2,9) }
-  function today(){ return new Date().toISOString().slice(0,10) }
-  function format(n){
+function today(){ return new Date().toISOString().slice(0,10) }
+function format(n){
     const sign = n < 0 ? '-' : '';
     const v = Math.abs(Math.round(n));
     return sign + v.toLocaleString('ja-JP');
   }
-  function money(n){ return `${state.currency}${format(n)}` }
-  function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
-  function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY) || ''); }catch{ return null } }
-  function seed(){
+function money(n){ return `${state.currency}${format(n)}` }
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY) || ''); }catch{ return null } }
+function seed(){
     const st = initialState();
     st.childName = 'なまえ';
     st.transactions = [
@@ -45,8 +45,7 @@
     localStorage.setItem(LS_KEY, JSON.stringify(st));
     return st;
   }
-
-  function computeBalance(){
+function computeBalance(){
     return state.transactions.reduce((sum, t)=>{
       if(t.type==='income' || t.type==='chore') return sum + t.amount;
       if(t.type==='expense' || t.type==='goal') return sum - t.amount;
@@ -65,14 +64,12 @@
     renderChores();
     renderSettings();
   }
-
-  function renderHeader(){
+function renderHeader(){
     $('#avatarButton').textContent = state.avatar;
     $('#childName').value = state.childName || '';
     document.getElementById('balance').textContent = money(computeBalance());
   }
-
-  function renderTabs(){
+function renderTabs(){
     $$('.tab').forEach(btn=>{
       btn.onclick = ()=>{
         $$('.tab').forEach(b=>b.classList.remove('active'));
@@ -103,8 +100,7 @@
       }
     }, { once:true });
   }
-
-  function renderHome(){
+function renderHome(){
     // recent
     const recent = [...state.transactions].sort((a,b)=>b.dateISO.localeCompare(a.dateISO)).slice(0,6);
     const ul = $('#recentList');
@@ -140,8 +136,7 @@
       $('#quickNote').value = '';
     };
   }
-
-  function renderTransactions(){
+function renderTransactions(){
     const list = $('#txList');
     const filter = $('#filterType');
     function paint(){
@@ -178,8 +173,7 @@
       renderTransactions();
     };
   }
-
-  function renderGoals(){
+function renderGoals(){
     const wrap = $('#goalList');
     wrap.innerHTML = '';
     if(state.goals.length===0){
@@ -237,8 +231,7 @@
       renderGoals();
     };
   }
-
-  function renderChores(){
+function renderChores(){
     const ul = document.getElementById('choreList');
     try{ if(typeof ensureChoreAdder=== 'function') ensureChoreAdder(); }catch(e){}
     ul.innerHTML = '';
@@ -279,7 +272,7 @@
     try{ if(typeof bindChoreControls=== 'function') bindChoreControls(); }catch(e){}
   }
   }
-  function renderSettings(){
+function renderSettings(){
     $('#settingsName').value = state.childName;
     $('#currency').value = state.currency;
     $('#themeSelect').value = state.theme || 'cute';
@@ -368,8 +361,7 @@
       if(animateCoin) dropCoin();
     }
   }
-
-  function contributeToGoal(goal){
+function contributeToGoal(goal){
     const max = computeBalance();
     if(max<=0) return toast('まずはおこづかいをためよう！');
     const val = prompt(`いくらちょきんする？（最大 ${money(max)}）`, Math.min(300, max).toString());
@@ -385,8 +377,7 @@
       toast('おめでとう！ もくひょう たっせい！');
     }
   }
-
-  function editGoal(goal){
+function editGoal(goal){
     const name = prompt('なまえ', goal.name)||goal.name;
     const target = parseAmount(prompt('目標金額', String(goal.target))||String(goal.target));
     if(!validAmount(target)) return toast('目標金額を正しく入れてね');
@@ -395,8 +386,7 @@
     save();
     renderGoals();
   }
-
-  function deleteGoal(goal){
+function deleteGoal(goal){
     if(!confirm('もくひょうをけしますか？')) return;
     state.goals = state.goals.filter(g=>g.id!==goal.id);
     save();
@@ -414,8 +404,7 @@
     document.body.appendChild(c);
     setTimeout(()=> c.remove(), 900);
   }
-
-  function confetti(){
+function confetti(){
     const wrap = $('#confetti');
     for(let i=0;i<80;i++){
       const p = document.createElement('div');
@@ -430,8 +419,7 @@
       setTimeout(()=> p.remove(), 1600);
     }
   }
-
-  function toast(msg){
+function toast(msg){
     const el = document.createElement('div');
     el.textContent = msg;
     el.style.position='fixed'; el.style.left='50%'; el.style.bottom='20px'; el.style.transform='translateX(-50%)';
@@ -444,18 +432,18 @@
   // ----- Helpers -----
   const supportsDialog = typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype && 'showModal' in HTMLDialogElement.prototype;
   function openModal(dlg){ if(supportsDialog) dlg.showModal(); else { document.body.classList.add('modal-open'); dlg.classList.add('open'); } }
-  function closeModal(dlg){ if(supportsDialog) dlg.close(); else { dlg.classList.remove('open'); document.body.classList.remove('modal-open'); } }
-  function applyTheme(){
+function closeModal(dlg){ if(supportsDialog) dlg.close(); else { dlg.classList.remove('open'); document.body.classList.remove('modal-open'); } }
+function applyTheme(){
     document.body.classList.toggle('theme-adventure', state.theme==='adventure');
     document.body.classList.toggle('theme-cute', state.theme!=='adventure');
   }
-  function getAvatarChoices(){
+function getAvatarChoices(){
     if(state.theme==='adventure'){
       return ['🚀','🛸','🤖','🦖','🛰️','⚽','🎮','🧭','🛡️','🗡️','🧱','🐲'];
     }
     return ['🐻','🐱','🐯','🐰','🐼','🦊','🐨','🦄','🐣','🐵','🐶','🐸'];
   }
-  function dateJa(iso){
+function dateJa(iso){
     try{
       const d = new Date(iso);
       const m = d.getMonth()+1; const day = d.getDate();
@@ -464,20 +452,20 @@
       return `${m}/${day} ${hh}:${mm}`;
     }catch{ return '' }
   }
-  function labelForType(type){
+function labelForType(type){
     return type==='income' ? 'おこづかい' : type==='expense' ? 'おかいもの' : type==='goal' ? 'ちょきん' : 'おてつだい';
   }
-  function parseAmount(v){
+function parseAmount(v){
     if(typeof v !== 'string') return 0;
     v = v.replace(/[^0-9]/g,'');
     return v ? parseInt(v,10) : 0;
   }
-  function validAmount(n){ return Number.isFinite(n) && n>0 && n<=1_000_000 }
-  function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])) }
+function validAmount(n){ return Number.isFinite(n) && n>0 && n<=1_000_000 }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])) }
 
   // ----- Chore controls (undo & clear today) -----
   function isTodayISO(iso){ try{ return (iso||'').slice(0,10) === today(); }catch{ return false } }
-  function removeLastChoreTxFor(name){
+function removeLastChoreTxFor(name){
     for(let i=state.transactions.length-1;i>=0;i--){
       const t = state.transactions[i];
       if(t && t.type==='chore' && isTodayISO(t.dateISO) && (t.note||'').indexOf(name) >= 0){
@@ -487,7 +475,7 @@
     }
     return false;
   }
-  function clearTodayChores(){
+function clearTodayChores(){
     let changed=false;
     state.chores.forEach(ch=>{ if(ch.lastDone===today()){ ch.lastDone=''; changed=true; } });
     for(let i=state.transactions.length-1;i>=0;i--){
@@ -496,7 +484,7 @@
     }
     if(changed){ save(); var b=document.getElementById('balance'); if(b) b.textContent = money(computeBalance()); renderChores(); }
   }
-  function bindChoreControls(){
+function bindChoreControls(){
     try{
       var ul = document.getElementById('choreList'); if(!ul) return;
       var lis = Array.prototype.slice.call(ul.children);
@@ -573,5 +561,6 @@
       };
     }catch(e){}
   }
+
 
 
