@@ -523,9 +523,7 @@ function bindChoreControls(){
       }
     }catch(e){}
   }
-  // ----- Init -----
-  renderAll();
-})();
+  \r\n
 
 
 
@@ -564,3 +562,6 @@ function bindChoreControls(){
 
 
 
+\r\n// ----- Init -----
+  renderAll();
+})();
