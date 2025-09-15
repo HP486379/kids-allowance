@@ -278,7 +278,8 @@
     });
     try{ if(typeof bindChoreControls===''function'') bindChoreControls(); }catch(e){}
   }
-  }function renderSettings(){
+  }
+  function renderSettings(){
     $('#settingsName').value = state.childName;
     $('#currency').value = state.currency;
     $('#themeSelect').value = state.theme || 'cute';
@@ -572,3 +573,4 @@
       };
     }catch(e){}
   }
+
