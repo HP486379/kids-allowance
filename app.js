@@ -240,7 +240,7 @@
 
   function renderChores(){
     const ul = document.getElementById('choreList');
-    try{ if(typeof ensureChoreAdder===''function'') ensureChoreAdder(); }catch(e){}
+    try{ if(typeof ensureChoreAdder=== 'function') ensureChoreAdder(); }catch(e){}
     ul.innerHTML = '';
     if (!Array.isArray(state.chores) || state.chores.length === 0) {
       const li = document.createElement('li');
@@ -276,7 +276,7 @@
       li.appendChild(btn);
       ul.appendChild(li);
     });
-    try{ if(typeof bindChoreControls===''function'') bindChoreControls(); }catch(e){}
+    try{ if(typeof bindChoreControls=== 'function') bindChoreControls(); }catch(e){}
   }
   }
   function renderSettings(){
@@ -573,4 +573,5 @@
       };
     }catch(e){}
   }
+
 
