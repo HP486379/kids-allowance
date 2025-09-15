@@ -238,16 +238,17 @@
     };
   }
 
-    
-    ensureChoreAdder();
+  function renderChores(){
+    const ul = document.getElementById('choreList');
+    try{ if(typeof ensureChoreAdder===''function'') ensureChoreAdder(); }catch(e){}
     ul.innerHTML = '';
-    if (state.chores.length === 0) {
+    if (!Array.isArray(state.chores) || state.chores.length === 0) {
       const li = document.createElement('li');
-      li.textContent = '\u307E\u3060\u306A\u3044\u3088'; // まだないよ
+      li.textContent = 'まだないよ';
       ul.appendChild(li);
       return;
     }
-    state.chores.forEach(ch => {
+    state.chores.forEach((ch) => {
       const doneToday = ch.lastDone === today();
       const li = document.createElement('li');
       li.className = doneToday ? 'done' : '';
@@ -257,17 +258,17 @@
       note.textContent = ch.name;
       const meta = document.createElement('div');
       meta.className = 'meta';
-      meta.textContent = '\u3054\u307B\u3046\u3073: ' + money(ch.reward) + (doneToday ? ' (\u304D\u3087\u3046\u306FOK)' : '');
+      meta.textContent = 'ごほうび: ' + money(ch.reward) + (doneToday ? '（きょうはOK）' : '');
       left.appendChild(note);
       left.appendChild(meta);
       const btn = document.createElement('button');
       btn.className = 'btn good';
-      btn.textContent = '\u3084\u3063\u305F\uFF01';
+      btn.textContent = 'やった！';
       if (doneToday) btn.disabled = true;
       btn.onclick = () => {
         if (ch.lastDone === today()) return;
         ch.lastDone = today();
-        addTx('chore', ch.reward, '\u304A\u3066\u3064\u3060\u3044 ' + ch.name, true);
+        addTx('chore', ch.reward, 'おてつだい ' + ch.name, true);
         save();
         renderChores();
       };
@@ -275,7 +276,8 @@
       li.appendChild(btn);
       ul.appendChild(li);
     });
-    bindChoreControls();
+    try{ if(typeof bindChoreControls===''function'') bindChoreControls(); }catch(e){}
+  }
   }function renderSettings(){
     $('#settingsName').value = state.childName;
     $('#currency').value = state.currency;
