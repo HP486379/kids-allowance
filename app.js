@@ -32,7 +32,7 @@ function format(n){
     return sign + v.toLocaleString('ja-JP');
   }
 function money(n){ return `${state.currency}${format(n)}` }
-function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); mirrorToProfile(); }
 function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY) || ''); }catch{ return null } }
 function seed(){
     const st = initialState();
@@ -53,7 +53,52 @@ function computeBalance(){
     }, 0);
   }
 
-  // ----- Rendering -----
+  
+  // ===== Multi-user meta (profiles) =====
+  const META_KEY = 'kid-allowance:meta';
+  const PROFILE_PREFIX = 'kid-allowance:profile:';
+  function pidKey(id){ return PROFILE_PREFIX + id; }
+  function idGen(){ return Math.random().toString(36).slice(2,9); }
+  function ensureMeta(){
+    try{
+      let meta = JSON.parse(localStorage.getItem(META_KEY) || '');
+      if(!meta || !Array.isArray(meta.profiles) || !meta.profiles.length){
+        const id = idGen();
+        meta = { profiles:[{ id, name:'なまえ' }], currentId:id };
+        const st = load() || initialState();
+        localStorage.setItem(pidKey(id), JSON.stringify(st));
+        localStorage.setItem(META_KEY, JSON.stringify(meta));
+      }
+      return meta;
+    }catch{
+      const id = idGen();
+      const st = load() || initialState();
+      localStorage.setItem(pidKey(id), JSON.stringify(st));
+      const meta = { profiles:[{ id, name:'なまえ' }], currentId:id };
+      localStorage.setItem(META_KEY, JSON.stringify(meta));
+      return meta;
+    }
+  }
+  let META = ensureMeta();
+  function mirrorToProfile(){
+    try{ if(META && META.currentId){ localStorage.setItem(pidKey(META.currentId), JSON.stringify(state)); } }catch{}
+  }
+  function loadProfileToActive(id){
+    try{
+      const raw = localStorage.getItem(pidKey(id));
+      const st = raw ? JSON.parse(raw) : initialState();
+      localStorage.setItem(LS_KEY, JSON.stringify(st));
+      return st;
+    }catch{ return null }
+  }
+  function switchProfile(id){
+    try{
+      mirrorToProfile();
+      const st = loadProfileToActive(id) || initialState();
+      META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
+      state = st; renderAll();
+    }catch{}
+  }// ----- Rendering -----
   function renderAll(){
     applyTheme();
     renderHeader();
@@ -337,7 +382,48 @@ function renderSettings(){
         }catch{ toast('JSONを確認してください'); }
       };
     };
-
+    // Profiles (multi-user) controls (inserted safely)
+    (function injectProfileRow(){
+      try{
+        const card = document.querySelector('#view-settings .card');
+        if(!card || document.getElementById('profileRow')) return;
+        const row = document.createElement('div');
+        row.id = 'profileRow'; row.className = 'field-row'; row.style.marginBottom = '8px';
+        const label = document.createElement('label'); label.textContent = 'ひと';
+        const sel = document.createElement('select'); sel.id='profileSelect'; sel.className='input'; sel.style.minWidth = '160px';
+        const addBtn = document.createElement('button'); addBtn.className='btn'; addBtn.textContent='追加';
+        const renBtn = document.createElement('button'); renBtn.className='btn'; renBtn.textContent='なまえ変更';
+        const delBtn = document.createElement('button'); delBtn.className='btn danger'; delBtn.textContent='けす';
+        row.appendChild(label); row.appendChild(sel); row.appendChild(addBtn); row.appendChild(renBtn); row.appendChild(delBtn);
+        card.insertBefore(row, card.firstChild);
+        function refreshSelect(){
+          sel.innerHTML = '';
+          (META && META.profiles || []).forEach(p=>{
+            const o=document.createElement('option'); o.value=p.id; o.textContent=p.name||'なまえ'; if(p.id===META.currentId) o.selected=true; sel.appendChild(o);
+          });
+        }
+        refreshSelect();
+        sel.onchange = ()=>{ if(sel.value) switchProfile(sel.value); };
+        addBtn.onclick = ()=>{
+          const name = prompt('なまえ'); if(!name) return;
+          const id = idGen(); META.profiles.push({id,name}); META.currentId=id; localStorage.setItem(META_KEY, JSON.stringify(META));
+          state = initialState(); state.childName = name; save(); renderAll();
+        };
+        renBtn.onclick = ()=>{
+          const p = META.profiles.find(x=>x.id===META.currentId); if(!p) return;
+          const name = prompt('なまえ', p.name)||p.name; p.name=name; localStorage.setItem(META_KEY, JSON.stringify(META)); refreshSelect();
+          state.childName = name; save(); renderHeader();
+        };
+        delBtn.onclick = ()=>{
+          if(META.profiles.length<=1){ alert('これ以上けせません'); return; }
+          if(!confirm('このひとをけしますか？')) return;
+          const cur=META.currentId; META.profiles = META.profiles.filter(x=>x.id!==cur);
+          try{ localStorage.removeItem(pidKey(cur)); }catch{}
+          META.currentId = META.profiles[0].id; localStorage.setItem(META_KEY, JSON.stringify(META));
+          state = loadProfileToActive(META.currentId) || initialState(); renderAll();
+        };
+      }catch{}
+    })();
     // Header quick edits
     $('#childName').oninput = (e)=>{ state.childName = e.target.value; save(); $('#settingsName').value = state.childName; };
     $('#avatarButton').onclick = ()=>{
@@ -565,4 +651,5 @@ function bindChoreControls(){
 // ----- Init -----
   renderAll();
 })();
+
 
