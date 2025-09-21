@@ -332,14 +332,13 @@ function renderSettings(){
     choices.forEach(em=>{
       const b = document.createElement('button');
       b.type='button'; b.className='avatar'; b.textContent=em;
-      b.onclick=()=>{ state.avatar = em; save(); renderHeader(); };
+      b.onclick=()=>{ state.avatar = em; save(); renderHeader(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
       wrap.appendChild(b);
     });
 
-    $('#settingsName').oninput = (e)=>{ state.childName = e.target.value; save(); $('#childName').value = state.childName; };
-    $('#currency').onchange = (e)=>{ state.currency = e.target.value; save(); renderHeader(); renderGoals(); renderChores(); renderTransactions(); renderHome(); };
-    $('#themeSelect').onchange = (e)=>{
-      state.theme = e.target.value;
+    #settingsName.oninput = (e)=>{ state.childName = e.target.value; save(); #childName.value = state.childName; try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} }; save(); $('#childName').value = state.childName; };
+    #currency.onchange = (e)=>{ state.currency = e.target.value; save(); renderHeader(); renderGoals(); renderChores(); renderTransactions(); renderHome(); }; save(); renderHeader(); renderGoals(); renderChores(); renderTransactions(); renderHome(); };
+    #themeSelect.onchange = (e)=>{ state.theme = e.target.value; save(); applyTheme(); renderHeader(); renderHome(); renderTransactions(); renderGoals(); renderChores(); renderSettings(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
       save();
       applyTheme();
       renderHeader();
@@ -431,7 +430,7 @@ function renderSettings(){
       }catch{}
     })();
     // Header quick edits
-    $('#childName').oninput = (e)=>{ state.childName = e.target.value; save(); $('#settingsName').value = state.childName; };
+    #childName.oninput = (e)=>{ state.childName = e.target.value; save(); #settingsName.value = state.childName; try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
     $('#avatarButton').onclick = ()=>{
       // cycle avatar
       const choices = getAvatarChoices();
@@ -657,5 +656,6 @@ function bindChoreControls(){
 // ----- Init -----
   renderAll();
 })();
+
 
 
