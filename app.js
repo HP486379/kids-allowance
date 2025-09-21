@@ -32,7 +32,13 @@ function format(n){
     return sign + v.toLocaleString('ja-JP');
   }
 function money(n){ return `${state.currency}${format(n)}` }
-function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); mirrorToProfile(); }
+function save(){
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+  mirrorToProfile();
+  try {
+    if (window.kidsAllowanceSync) window.kidsAllowanceSync(state);
+  } catch (_) {}
+}
 function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY) || ''); }catch{ return null } }
 function seed(){
     const st = initialState();
