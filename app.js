@@ -443,8 +443,7 @@ function renderSettings(){
   function addTx(type, amount, note, animateCoin=false){
     const t = { id:id(), type, amount:Math.round(amount), note, dateISO:new Date().toISOString() };
     state.transactions.push(t);
-    save();
-    document.getElementById('balance').textContent = money(computeBalance());
+    save();\r\n    document.getElementById('balance').textContent = money(computeBalance()); try{ if(window.kidsAllowanceUpdateBalance) window.kidsAllowanceUpdateBalance(state); }catch{}
     renderHome();
     renderTransactions();
     if(type==='income' || type==='chore'){
@@ -656,6 +655,7 @@ function bindChoreControls(){
 // ----- Init -----
   renderAll();
 })();
+
 
 
 
