@@ -339,15 +339,7 @@ function renderSettings(){
     $('#settingsName').oninput = (e)=>{ state.childName = e.target.value; save(); $('#childName').value = state.childName; try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
     $('#currency').onchange = (e)=>{ state.currency = e.target.value; save(); renderHeader(); renderGoals(); renderChores(); renderTransactions(); renderHome(); };
     $('#themeSelect').onchange = (e)=>{ state.theme = e.target.value; save(); applyTheme(); renderHeader(); renderHome(); renderTransactions(); renderGoals(); renderChores(); renderSettings(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
-      save();
-      applyTheme();
-      renderHeader();
-      renderHome();
-      renderTransactions();
-      renderGoals();
-      renderChores();
-      renderSettings(); // refresh avatar pack
-    };
+  };
     $('#resetData').onclick = ()=>{
       if(confirm('データをぜんぶけします。よろしいですか？')){
         localStorage.removeItem(LS_KEY);
@@ -443,7 +435,8 @@ function renderSettings(){
   function addTx(type, amount, note, animateCoin=false){
     const t = { id:id(), type, amount:Math.round(amount), note, dateISO:new Date().toISOString() };
     state.transactions.push(t);
-    save();\r\n    document.getElementById('balance').textContent = money(computeBalance()); try{ if(window.kidsAllowanceUpdateBalance) window.kidsAllowanceUpdateBalance(state); }catch{}
+    save();
+    document.getElementById('balance').textContent = money(computeBalance()); try{ if(window.kidsAllowanceUpdateBalance) window.kidsAllowanceUpdateBalance(state); }catch{}
     renderHome();
     renderTransactions();
     if(type==='income' || type==='chore'){
