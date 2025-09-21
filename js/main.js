@@ -1,29 +1,36 @@
-import { saveName, listenNames, saveSummary } from "./firebase.js";
+import { saveSummary, saveProfile, listenProfile, updateBalance, listenBalance } from "./firebase.js";
 
 // ====== Firebase 簡易UI連携 ======
+// 起動時にクラウドのプロフィール/残高を購読してUIを更新（軽量）
 window.addEventListener("DOMContentLoaded", () => {
-  const addBtn = document.getElementById("addNameBtn");
-  const nameInput = document.getElementById("nameInput");
-  const listEl = document.getElementById("nameList");
-  if (addBtn && nameInput) {
-    addBtn.addEventListener("click", () => {
-      const name = nameInput.value.trim();
-      if (name) {
-        saveName(name);
-        nameInput.value = "";
+  try {
+    listenProfile((p) => {
+      if (!p) return;
+      if (typeof p.name === 'string') {
+        const el = document.getElementById('childName');
+        if (el) el.value = p.name;
+        const s = document.getElementById('settingsName');
+        if (s) s.value = p.name;
+      }
+      if (typeof p.avatar === 'string') {
+        const b = document.getElementById('avatarButton');
+        if (b) b.textContent = p.avatar;
+      }
+      if (typeof p.theme === 'string') {
+        const t = document.getElementById('themeSelect');
+        if (t) t.value = p.theme;
+        document.body.classList.toggle('theme-adventure', p.theme === 'adventure');
+        document.body.classList.toggle('theme-cute', p.theme !== 'adventure');
       }
     });
-  }
-  if (listEl) {
-    listenNames((names) => {
-      listEl.innerHTML = "";
-      names.forEach((n) => {
-        const li = document.createElement("li");
-        li.textContent = n;
-        listEl.appendChild(li);
-      });
+  } catch {}
+  try {
+    listenBalance((bal) => {
+      if (bal == null) return;
+      const el = document.getElementById('balance');
+      if (el) el.textContent = `\\${Number(bal).toLocaleString('ja-JP')}`;
     });
-  }
+  } catch {}
 });
 
 // ====== app.js からの保存フック ======
@@ -54,3 +61,32 @@ window.addEventListener('load', () => {
   console.log('Firebase mode: data.json fetch is disabled');
 });
 
+// ===== UI から直接呼び出すフック =====
+// プロフィール（名前・アバター・テーマ）保存
+let profTimer = null;
+window.kidsAllowanceSaveProfile = function (state) {
+  if (profTimer) clearTimeout(profTimer);
+  profTimer = setTimeout(async () => {
+    try {
+      await saveProfile({ name: state.childName, avatar: state.avatar, theme: state.theme });
+      console.log('Firebase: profile saved');
+    } catch (e) { console.warn('profile save failed', e); }
+  }, 300);
+};
+
+// 残高の更新（おこづかい加減時）
+let balTimer = null;
+window.kidsAllowanceUpdateBalance = function (state) {
+  if (balTimer) clearTimeout(balTimer);
+  balTimer = setTimeout(async () => {
+    const balance = (state.transactions || []).reduce((sum, t) => {
+      if (t.type === 'income' || t.type === 'chore') return sum + t.amount;
+      if (t.type === 'expense' || t.type === 'goal') return sum - t.amount;
+      return sum;
+    }, 0);
+    try {
+      await updateBalance(balance);
+      console.log('Firebase: balance updated', balance);
+    } catch (e) { console.warn('balance update failed', e); }
+  }, 200);
+};

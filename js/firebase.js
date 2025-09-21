@@ -39,3 +39,40 @@ export async function saveSummary(summary) {
   const node = push(ref(db, "summaries/"));
   await set(node, { ...summary, timestamp: Date.now() });
 }
+
+// ===== ユーザー識別（ローカルのプロフィールIDを使用） =====
+function getUid() {
+  try {
+    const m = JSON.parse(localStorage.getItem('kid-allowance:meta') || '{}');
+    return m.currentId || 'guest';
+  } catch {
+    return 'guest';
+  }
+}
+
+// ===== プロフィール保存/購読 =====
+export async function saveProfile(profile) {
+  const uid = getUid();
+  await set(ref(db, `users/${uid}/profile`), { ...profile, timestamp: Date.now() });
+}
+
+export function listenProfile(callback) {
+  const uid = getUid();
+  onValue(ref(db, `users/${uid}/profile`), (snap) => {
+    callback(snap.val() || {});
+  });
+}
+
+// ===== 残高保存/購読 =====
+export async function updateBalance(balance) {
+  const uid = getUid();
+  await set(ref(db, `users/${uid}/balance`), { value: Number(balance) || 0, timestamp: Date.now() });
+}
+
+export function listenBalance(callback) {
+  const uid = getUid();
+  onValue(ref(db, `users/${uid}/balance`), (snap) => {
+    const v = snap.val();
+    callback(v && typeof v.value !== 'undefined' ? v.value : null);
+  });
+}

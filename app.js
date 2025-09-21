@@ -336,9 +336,9 @@ function renderSettings(){
       wrap.appendChild(b);
     });
 
-    #settingsName.oninput = (e)=>{ state.childName = e.target.value; save(); #childName.value = state.childName; try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} }; save(); $('#childName').value = state.childName; };
-    #currency.onchange = (e)=>{ state.currency = e.target.value; save(); renderHeader(); renderGoals(); renderChores(); renderTransactions(); renderHome(); }; save(); renderHeader(); renderGoals(); renderChores(); renderTransactions(); renderHome(); };
-    #themeSelect.onchange = (e)=>{ state.theme = e.target.value; save(); applyTheme(); renderHeader(); renderHome(); renderTransactions(); renderGoals(); renderChores(); renderSettings(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
+    $('#settingsName').oninput = (e)=>{ state.childName = e.target.value; save(); $('#childName').value = state.childName; try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
+    $('#currency').onchange = (e)=>{ state.currency = e.target.value; save(); renderHeader(); renderGoals(); renderChores(); renderTransactions(); renderHome(); };
+    $('#themeSelect').onchange = (e)=>{ state.theme = e.target.value; save(); applyTheme(); renderHeader(); renderHome(); renderTransactions(); renderGoals(); renderChores(); renderSettings(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
       save();
       applyTheme();
       renderHeader();
@@ -430,12 +430,12 @@ function renderSettings(){
       }catch{}
     })();
     // Header quick edits
-    #childName.oninput = (e)=>{ state.childName = e.target.value; save(); #settingsName.value = state.childName; try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
+    $('#childName').oninput = (e)=>{ state.childName = e.target.value; save(); $('#settingsName').value = state.childName; try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
     $('#avatarButton').onclick = ()=>{
       // cycle avatar
       const choices = getAvatarChoices();
       const idx = (choices.indexOf(state.avatar)+1) % choices.length;
-      state.avatar = choices[idx]; save(); renderHeader();
+      state.avatar = choices[idx]; save(); renderHeader(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{}
     };
   }
 
