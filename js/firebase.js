@@ -104,11 +104,12 @@ export function listenTransactions(callback) {
 // ===== 全件読み込み（初期ロード用） =====
 export function loadAllTransactions(callback) {
   const uid = getUid();
-  const txRef = ref(db, users//transactions);
+  const txRef = ref(db, 'users/' + uid + '/transactions');
   onValue(txRef, (snapshot) => {
     const data = snapshot.val() || {};
     const list = Object.entries(data).map(([key, val]) => ({ id: key, ...val }));
     callback?.(list);
   });
 }
+
 

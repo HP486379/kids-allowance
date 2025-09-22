@@ -105,3 +105,4 @@ window.kidsAllowanceUpdateBalance = function (state) {
 };
 
 \r\nfunction appendTransactionToUI(tx){\r\n  const list = document.getElementById('transactionList');\r\n  if(!list) return;\r\n  const li = document.createElement('li');\r\n  const sign = (tx.type==='add')? '+':'-';\r\n  const ts = tx.timestamp? new Date(tx.timestamp).toLocaleString():'';\r\n  li.textContent = ${tx.label||'取引'}:  ();\r\n  list.appendChild(li);\r\n}\r\n
+
