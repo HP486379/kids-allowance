@@ -34,13 +34,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // 鏡映情報: Firebase 全取引をロードして同期
 try {
-  loadAllTransactions((all) => {
-    all.sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
-    all.forEach(tx=>{
-      try { if(window.kidsAllowanceOnCloudTx) window.kidsAllowanceOnCloudTx(tx.id, tx); } catch{}
-    });
+  listenBalance((bal) => {
+    if (bal == null) return;
+    const el = document.getElementById('balance');
+    if (el) el.textContent = `￥${Number(bal).toLocaleString('ja-JP')}`;
   });
-} catch{}
+} catch {}
 
       });
     });
