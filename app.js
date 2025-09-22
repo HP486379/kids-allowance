@@ -640,10 +640,30 @@ function bindChoreControls(){
 
 // ----- Init -----
   renderAll();
-})();
-
-
-
-
-
-
+// Cloud transaction -> append to UI/state (avoid feedback & duplicates)
+try{
+  window.kidsAllowanceOnCloudTx = function(key, tx){
+    try{
+      if(!tx) return;
+      window._cloudSeen = window._cloudSeen || new Set();
+      if(window._cloudSeen.has(key)) return; // seen
+      window._cloudSeen.add(key);
+      const t = {
+        id: id(),
+        type: (tx.type === 'add' ? 'income' : 'expense'),
+        amount: Math.round(Number(tx.amount) || 0),
+        note: tx.label || '',
+        dateISO: new Date(tx.timestamp || Date.now()).toISOString()
+      };
+      // simple recent-duplicate guard
+      const recent = state.transactions.slice(-5);
+      const dup = recent.some(u => u.type===t.type && u.amount===t.amount && u.note===t.note && Math.abs(new Date(u.dateISO) - new Date(t.dateISO)) < 2000);
+      if(dup) return;
+      state.transactions.push(t);
+      save();
+      renderHome();
+      renderTransactions();
+    }catch{}
+  };
+}catch{}
+})();
