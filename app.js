@@ -643,8 +643,8 @@ function bindChoreControls(){
 // ----- Init -----
   renderAll();
 // Cloud transaction -> append to UI/state (avoid feedback & duplicates)
-try{
-  window.kidsAllowanceOnCloudTx = function(key, tx){
+  try{
+    window.kidsAllowanceOnCloudTx = function(key, tx){
     try{
       if(!tx) return;
       window._cloudSeen = window._cloudSeen || new Set();
@@ -667,6 +667,35 @@ try{
       renderTransactions();
     }catch{}
   };
+}catch{}
+
+// Inject Sync ID share/apply controls into Settings card
+try{
+  (function setupSyncIdUI(){
+    const card = document.querySelector('#view-settings .card');
+    if(!card){ setTimeout(setupSyncIdUI, 300); return; }
+    if(document.getElementById('syncIdRow')) return;
+    const row = document.createElement('div');
+    row.id='syncIdRow'; row.className='field-row'; row.style.marginTop='8px';
+    const label = document.createElement('label'); label.textContent = '同期ID';
+    const disp = document.createElement('input'); disp.id='syncIdDisplay'; disp.readOnly=true; disp.style.minWidth='160px'; disp.value = (META && META.currentId) || '';
+    const copyBtn = document.createElement('button'); copyBtn.className='btn'; copyBtn.textContent='コピー';
+    const applyInput = document.createElement('input'); applyInput.id='syncIdInput'; applyInput.placeholder='貼り付けて適用'; applyInput.style.minWidth='160px';
+    const applyBtn = document.createElement('button'); applyBtn.className='btn'; applyBtn.textContent='適用';
+    row.appendChild(label); row.appendChild(disp); row.appendChild(copyBtn); row.appendChild(applyInput); row.appendChild(applyBtn);
+    card.appendChild(row);
+    copyBtn.onclick = ()=>{ try{ navigator.clipboard.writeText(disp.value); toast('コピーしました'); }catch{ toast('コピーできませんでした'); } };
+    applyBtn.onclick = ()=>{
+      const id = (applyInput.value||'').trim(); if(!id){ toast('IDを入力してください'); return; }
+      try{
+        if(!(META.profiles||[]).some(p=>p.id===id)){
+          META.profiles = (META.profiles||[]); META.profiles.push({ id, name: state.childName||'なまえ' });
+        }
+        META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
+        const st = loadProfileToActive(id) || initialState(); state = st; renderAll(); toast('同期IDを適用しました');
+      }catch(e){ console.warn(e); }
+    };
+  })();
 }catch{}
 })();
 
