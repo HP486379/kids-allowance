@@ -29,8 +29,8 @@ window.addEventListener("DOMContentLoaded", () => {
       if (bal == null) return;
       const el = document.getElementById('balance');
       if (el) el.textContent = `\\${Number(bal).toLocaleString('ja-JP')}`;
-    });
-  } catch {}
+      } 
+      catch {}
 
   // 鏡映情報: Firebase 全取引をロードして同期
 try {
