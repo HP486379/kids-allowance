@@ -117,24 +117,25 @@ export function loadAllTransactions(callback) {
 // ===== Goals / Chores 保存・購読 =====
 export async function saveGoals(goals) {
   const uid = getUid();
-  await set(ref(db, users//goals), goals || []);
+  await set(ref(db, 'users/' + uid + '/goals'), goals || []);
 }
 
 export async function saveChores(chores) {
   const uid = getUid();
-  await set(ref(db, users//chores), chores || []);
+  await set(ref(db, 'users/' + uid + '/chores'), chores || []);
 }
 
 export function listenGoals(callback) {
   const uid = getUid();
-  onValue(ref(db, users//goals), (snap) => {
+  onValue(ref(db, 'users/' + uid + '/goals'), (snap) => {
     callback?.(snap.val() || []);
   });
 }
 
 export function listenChores(callback) {
   const uid = getUid();
-  onValue(ref(db, users//chores), (snap) => {
+  onValue(ref(db, 'users/' + uid + '/chores'), (snap) => {
     callback?.(snap.val() || []);
   });
 }
+
