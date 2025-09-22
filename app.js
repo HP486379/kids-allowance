@@ -703,4 +703,4 @@ try{
 
 
 
-\r\ntry{ window.kidsAllowanceApplyGoals = function(arr){ try{ state.goals = Array.isArray(arr)? arr : []; save(); renderGoals(); }catch(e){ console.warn(e); } }; }catch{}\r\ntry{ window.kidsAllowanceApplyChores = function(arr){ try{ state.chores = Array.isArray(arr)? arr : []; save(); renderChores(); }catch(e){ console.warn(e); } }; }catch{}\r\n
+
