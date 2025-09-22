@@ -28,7 +28,7 @@ window.addEventListener("DOMContentLoaded", () => {
   listenBalance((bal) => {
     if (bal == null) return;
     const el = document.getElementById('balance');
-    if (el) el.textContent = `￥${Number(bal).toLocaleString('ja-JP')}`;
+    if (el) el.textContent = `¥${Number(bal).toLocaleString('ja-JP')}`;
   });
 } catch {}
 
