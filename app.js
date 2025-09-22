@@ -339,7 +339,9 @@ function renderSettings(){
 
   $("#settingsName").oninput = (e)=>{ state.childName = e.target.value; save(); $("#childName").value = state.childName; try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
   $("#currency").onchange = (e)=>{ state.currency = e.target.value; save(); renderHeader(); renderGoals(); renderChores(); renderTransactions(); renderHome(); };
-  $("#themeSelect").onchange = (e)=>{ state.theme = e.target.value; save(); applyTheme(); renderHeader(); renderHome(); renderTransactions(); renderGoals(); renderChores(); renderSettings(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };\r\n  try{ const syncDisp = document.getElementById('syncIdDisplay'); if(syncDisp){ syncDisp.value = (META && META.currentId) || ''; } }catch{}\r\n
+  $("#themeSelect").onchange = (e)=>{ state.theme = e.target.value; save(); applyTheme(); renderHeader(); renderHome(); renderTransactions(); renderGoals(); renderChores(); renderSettings(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
+  try{ const syncDisp = document.getElementById('syncIdDisplay'); if(syncDisp){ syncDisp.value = (META && META.currentId) || ''; } }catch{}
+
 
   // Reset
   $("#resetData").onclick = ()=>{
@@ -698,5 +700,6 @@ try{
   })();
 }catch{}
 })();
+
 
 
