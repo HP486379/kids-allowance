@@ -32,11 +32,14 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   } catch {}
 
-  // 蛻晄悄繝ｭ繝ｼ繝峨〒蜈ｨ蜿門ｼ輔ｒ蠕ｩ蜈・ｼ域悽菴填I縺ｫ邨ｱ蜷茨ｼ・   {
+  // 蛻晄悄繝ｭ繝ｼ繝峨〒蜈ｨ蜿門ｼ輔ｒ蠕ｩ蜈・ｼ域悽菴填I縺ｫ邨ｱ蜷茨ｼ・     try {
     loadAllTransactions((all) => {
       all.sort((a,b)=> (a.timestamp||0)-(b.timestamp||0));
       all.forEach(tx => {
         try { if (window.kidsAllowanceOnCloudTx) window.kidsAllowanceOnCloudTx(tx.id, tx); } catch {}
+      });
+    });
+  } catch {}
       });
     });
   } catch {}\r\n\r\n  try { listenGoals((arr)=>{ try{ if(window.kidsAllowanceApplyGoals) window.kidsAllowanceApplyGoals(arr); }catch{} }); } catch {}\r\n  try { listenChores((arr)=>{ try{ if(window.kidsAllowanceApplyChores) window.kidsAllowanceApplyChores(arr); }catch{} }); } catch {}\r\n\r\n  try { listenTransactions((key, tx) => {
