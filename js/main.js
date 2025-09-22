@@ -1,6 +1,6 @@
-import { saveSummary, saveProfile, listenProfile, updateBalance, listenBalance, addTransaction, listenTransactions, loadAllTransactions } from "./firebase.js";
+﻿import { saveSummary, saveProfile, listenProfile, updateBalance, listenBalance, addTransaction, listenTransactions, loadAllTransactions, saveGoals, saveChores, listenGoals, listenChores } from "./firebase.js";
 
-// ====== Firebase 連携（購読） ======
+// ====== Firebase 騾｣謳ｺ・郁ｳｼ隱ｭ・・======
 window.addEventListener("DOMContentLoaded", () => {
   try {
     listenProfile((p) => {
@@ -32,18 +32,14 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   } catch {}
 
-  // 初期ロードで全取引を復元（本体UIに統合）
-  try {
+  // 蛻晄悄繝ｭ繝ｼ繝峨〒蜈ｨ蜿門ｼ輔ｒ蠕ｩ蜈・ｼ域悽菴填I縺ｫ邨ｱ蜷茨ｼ・  try {
     loadAllTransactions((all) => {
       all.sort((a,b)=> (a.timestamp||0)-(b.timestamp||0));
       all.forEach(tx => {
         try { if (window.kidsAllowanceOnCloudTx) window.kidsAllowanceOnCloudTx(tx.id, tx); } catch {}
       });
     });
-  } catch {}
-
-  try {
-    listenTransactions((key, tx) => {
+  } catch {}\r\n\r\n  try { listenGoals((arr)=>{ try{ if(window.kidsAllowanceApplyGoals) window.kidsAllowanceApplyGoals(arr); }catch{} }); } catch {}\r\n  try { listenChores((arr)=>{ try{ if(window.kidsAllowanceApplyChores) window.kidsAllowanceApplyChores(arr); }catch{} }); } catch {}\r\n\r\n  try { listenTransactions((key, tx) => {
       try { if (window.kidsAllowanceOnCloudTx) window.kidsAllowanceOnCloudTx(key, tx); }
       catch (e) { console.warn('onCloudTx hook failed', e); }
       console.log('Firebase: new transaction', key, tx);
@@ -51,7 +47,7 @@ window.addEventListener("DOMContentLoaded", () => {
   } catch {}
 });
 
-// ====== app.js からの保存フック ======
+// ====== app.js 縺九ｉ縺ｮ菫晏ｭ倥ヵ繝・け ======
 let syncTimer = null;
 window.kidsAllowanceSync = function syncToFirebase(state) {
   if (syncTimer) clearTimeout(syncTimer);
@@ -64,21 +60,20 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
       }, 0);
       const summary = { balance, goals: state.goals || [] };
       await saveSummary(summary);
-      try { if (window.toast) window.toast('Firebaseへ同期完了'); } catch {}
-      console.log('Firebaseへ同期完了', summary);
+      try { if (window.toast) window.toast('Firebase縺ｸ蜷梧悄螳御ｺ・); } catch {}
+      console.log('Firebase縺ｸ蜷梧悄螳御ｺ・, summary);
     } catch (e) {
-      console.warn('Firebase同期に失敗', e);
-      try { if (window.toast) window.toast('Firebase同期に失敗しました'); } catch {}
+      console.warn('Firebase蜷梧悄縺ｫ螟ｱ謨・, e);
+      try { if (window.toast) window.toast('Firebase蜷梧悄縺ｫ螟ｱ謨励＠縺ｾ縺励◆'); } catch {}
     }
   }, 500);
 };
 
-// 起動ログ（data.jsonは使わない）
-window.addEventListener('load', () => {
+// 襍ｷ蜍輔Ο繧ｰ・・ata.json縺ｯ菴ｿ繧上↑縺・ｼ・window.addEventListener('load', () => {
   console.log('Firebase mode: data.json fetch is disabled');
 });
 
-// ===== UI から直接呼び出すフック =====
+// ===== UI 縺九ｉ逶ｴ謗･蜻ｼ縺ｳ蜃ｺ縺吶ヵ繝・け =====
 let profTimer = null;
 window.kidsAllowanceSaveProfile = function (state) {
   if (profTimer) clearTimeout(profTimer);
@@ -88,7 +83,7 @@ window.kidsAllowanceSaveProfile = function (state) {
   }, 300);
 };
 
-// 取引追加時のフック: app.js の addTx から呼ぶ
+// 蜿門ｼ戊ｿｽ蜉譎ゅ・繝輔ャ繧ｯ: app.js 縺ｮ addTx 縺九ｉ蜻ｼ縺ｶ
 window.kidsAllowanceAddTx = async function (t) {
   try {
     const mapped = {
@@ -101,8 +96,7 @@ window.kidsAllowanceAddTx = async function (t) {
   } catch (e) { console.warn('addTransaction failed', e); }
 };
 
-// 残高の更新（おこづかい加減時）
-let balTimer = null;
+// 谿矩ｫ倥・譖ｴ譁ｰ・医♀縺薙▼縺九＞蜉貂帶凾・・let balTimer = null;
 window.kidsAllowanceUpdateBalance = function (state) {
   if (balTimer) clearTimeout(balTimer);
   balTimer = setTimeout(async () => {
@@ -116,4 +110,6 @@ window.kidsAllowanceUpdateBalance = function (state) {
   }, 200);
 };
 
-// 取引の本体UI（おこづかいタブ）への統合は app.js 内の kidsAllowanceOnCloudTx が実施
+// 蜿門ｼ輔・譛ｬ菴填I・医♀縺薙▼縺九＞繧ｿ繝厄ｼ峨∈縺ｮ邨ｱ蜷医・ app.js 蜀・・ kidsAllowanceOnCloudTx 縺悟ｮ滓命
+
+
