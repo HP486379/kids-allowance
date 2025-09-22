@@ -108,3 +108,4 @@ window.kidsAllowanceUpdateBalance = function (state) {
   }, 200);
 };
 
+
