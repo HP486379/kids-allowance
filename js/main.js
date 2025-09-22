@@ -32,7 +32,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   } catch {}
 
-  // 蛻晄悄繝ｭ繝ｼ繝峨〒蜈ｨ蜿門ｼ輔ｒ蠕ｩ蜈・ｼ域悽菴填I縺ｫ邨ｱ蜷茨ｼ・  try {
+  // 蛻晄悄繝ｭ繝ｼ繝峨〒蜈ｨ蜿門ｼ輔ｒ蠕ｩ蜈・ｼ域悽菴填I縺ｫ邨ｱ蜷茨ｼ・   {
     loadAllTransactions((all) => {
       all.sort((a,b)=> (a.timestamp||0)-(b.timestamp||0));
       all.forEach(tx => {
@@ -60,11 +60,11 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
       }, 0);
       const summary = { balance, goals: state.goals || [] };
       await saveSummary(summary);
-      try { if (window.toast) window.toast('Firebase縺ｸ蜷梧悄螳御ｺ・); } catch {}
-      console.log('Firebase縺ｸ蜷梧悄螳御ｺ・, summary);
+      try { if (window.toast) window.toast('Firebaseへ同期完了'); } catch {}
+      console.log('Firebaseへ同期完了', summary);
     } catch (e) {
-      console.warn('Firebase蜷梧悄縺ｫ螟ｱ謨・, e);
-      try { if (window.toast) window.toast('Firebase蜷梧悄縺ｫ螟ｱ謨励＠縺ｾ縺励◆'); } catch {}
+      console.warn('Firebase同期に失敗', e);
+      try { if (window.toast) window.toast('Firebase同期に失敗しました'); } catch {}
     }
   }, 500);
 };
