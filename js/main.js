@@ -1,23 +1,39 @@
-// main.js
+import {
+  saveSummary,
+  saveProfile,
+  listenProfile,
+  updateBalance,
+  listenBalance,
+  addTransaction,
+  listenTransactions,
+  loadAllTransactions,
+  saveGoals,
+  saveChores,
+  listenGoals,
+  listenChores
+} from "./firebase.js";
 
-document.addEventListener("DOMContentLoaded", () => {
+// ====== Firebase 初期化 ======
+window.addEventListener("DOMContentLoaded", () => {
   try {
-    // 初期描画（必要なUIを順番に呼び出し）
-    renderHome();
-    renderTransactions();
-    renderGoals();
-    renderChores();
-   } catch (e) {
-     console.warn("initial render failed", e);
-     }
-  // --- Firebase購読セットアップ ---
-  try {
-    listenProfile((prof) => {
-      try {
-        if (window.kidsAllowanceApplyProfile) {
-          window.kidsAllowanceApplyProfile(prof);
-        }
-      } catch {}
+    listenProfile((p) => {
+      if (!p) return;
+      if (typeof p.name === "string") {
+        const el = document.getElementById("childName");
+        if (el) el.value = p.name;
+        const s = document.getElementById("settingsName");
+        if (s) s.value = p.name;
+      }
+      if (typeof p.avatar === "string") {
+        const b = document.getElementById("avatarButton");
+        if (b) b.textContent = p.avatar;
+      }
+      if (typeof p.theme === "string") {
+        const t = document.getElementById("themeSelect");
+        if (t) t.value = p.theme;
+        document.body.classList.toggle("theme-adventure", p.theme === "adventure");
+        document.body.classList.toggle("theme-cute", p.theme !== "adventure");
+      }
     });
   } catch {}
 
@@ -29,164 +45,112 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   } catch {}
 
-  try {
-    listenTransactions((key, tx) => {
-      try {
-        if (window.kidsAllowanceOnCloudTx)
-          window.kidsAllowanceOnCloudTx(key, tx);
-      } catch (e) {
-        console.warn("onCloudTx hook failed", e);
-      }
-      console.log("Firebase: new transaction", key, tx);
-    });
-  } catch {}
-
+  // ====== Firebase 全取引・目標・お手伝い同期 ======
   try {
     listenGoals((arr) => {
       try {
-        if (window.kidsAllowanceApplyGoals)
-          window.kidsAllowanceApplyGoals(arr);
-      } catch (e) {
-        console.warn("applyGoals failed", e);
-      }
+        if (window.kidsAllowanceApplyGoals) window.kidsAllowanceApplyGoals(arr);
+      } catch {}
     });
   } catch {}
 
   try {
     listenChores((arr) => {
       try {
-        if (window.kidsAllowanceApplyChores)
-          window.kidsAllowanceApplyChores(arr);
+        if (window.kidsAllowanceApplyChores) window.kidsAllowanceApplyChores(arr);
+      } catch {}
+    });
+  } catch {}
+
+  try {
+    listenTransactions((key, tx) => {
+      try {
+        if (window.kidsAllowanceOnCloudTx) window.kidsAllowanceOnCloudTx(key, tx);
       } catch (e) {
-        console.warn("applyChores failed", e);
+        console.warn("onCloudTx hook failed", e);
       }
+      console.log("Firebase: new transaction", key, tx);
     });
   } catch {}
 });
 
-// --- Firebaseフック定義 ---
-
-// プロフィール保存
-try {
-  window.kidsAllowanceSaveProfile = function (st) {
+// ====== app.js から呼ばれるフック ======
+let syncTimer = null;
+window.kidsAllowanceSync = function syncToFirebase(state) {
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
     try {
-      saveProfile({
-        childName: st.childName,
-        avatar: st.avatar,
-        currency: st.currency,
-        theme: st.theme,
+      const balance = (state.transactions || []).reduce((sum, t) => {
+        if (t.type === "income" || t.type === "chore") return sum + t.amount;
+        if (t.type === "expense" || t.type === "goal") return sum - t.amount;
+        return sum;
+      }, 0);
+      const summary = { balance, goals: state.goals || [] };
+      await saveSummary(summary);
+      try {
+        if (window.toast) window.toast("Firebaseへ同期完了");
+      } catch {}
+      console.log("Firebaseへ同期完了", summary);
+    } catch (e) {
+      console.warn("Firebase同期に失敗", e);
+      try {
+        if (window.toast) window.toast("Firebase同期に失敗しました");
+      } catch {}
+    }
+  }, 500);
+};
+
+// data.json は使わないモード
+window.addEventListener("load", () => {
+  console.log("Firebase mode: data.json fetch is disabled");
+});
+
+// ====== プロフィール保存 ======
+let profTimer = null;
+window.kidsAllowanceSaveProfile = function (state) {
+  if (profTimer) clearTimeout(profTimer);
+  profTimer = setTimeout(async () => {
+    try {
+      await saveProfile({
+        name: state.childName,
+        avatar: state.avatar,
+        theme: state.theme,
       });
     } catch (e) {
-      console.warn("saveProfile failed", e);
+      console.warn("profile save failed", e);
     }
-  };
-} catch {}
+  }, 300);
+};
 
-// 残高保存
-try {
-  window.kidsAllowanceUpdateBalance = function (st) {
-    try {
-      saveBalance(computeBalance());
-    } catch (e) {
-      console.warn("saveBalance failed", e);
-    }
-  };
-} catch {}
+// ====== 取引保存 ======
+window.kidsAllowanceAddTx = async function (t) {
+  try {
+    const mapped = {
+      type: t?.type === "income" || t?.type === "chore" ? "add" : "subtract",
+      amount: Number(t?.amount) || 0,
+      label: t?.note || "",
+      timestamp: Date.parse(t?.dateISO || "") || Date.now(),
+    };
+    await addTransaction(mapped);
+  } catch (e) {
+    console.warn("addTransaction failed", e);
+  }
+};
 
-// 取引保存
-try {
-  window.kidsAllowanceAddTx = function (t) {
+// ====== 残高更新 ======
+let balTimer = null;
+window.kidsAllowanceUpdateBalance = function (state) {
+  if (balTimer) clearTimeout(balTimer);
+  balTimer = setTimeout(async () => {
+    const balance = (state.transactions || []).reduce((sum, t) => {
+      if (t.type === "income" || t.type === "chore") return sum + t.amount;
+      if (t.type === "expense" || t.type === "goal") return sum - t.amount;
+      return sum;
+    }, 0);
     try {
-      addTransaction({
-        type: t.type === "income" || t.type === "chore" ? "add" : "subtract",
-        amount: t.amount,
-        label: t.note,
-        timestamp: Date.now(),
-      });
+      await updateBalance(balance);
     } catch (e) {
-      console.warn("addTransaction failed", e);
+      console.warn("balance update failed", e);
     }
-  };
-} catch {}
-
-// ゴール保存
-try {
-  window.kidsAllowanceSaveGoals = function (arr) {
-    try {
-      saveGoals(arr);
-    } catch (e) {
-      console.warn("saveGoals failed", e);
-    }
-  };
-} catch {}
-
-// ゴール適用
-try {
-  window.kidsAllowanceApplyGoals = function (arr) {
-    try {
-      state.goals = Array.isArray(arr) ? arr : [];
-      save();
-      renderGoals();
-    } catch (e) {
-      console.warn("applyGoals failed", e);
-    }
-  };
-} catch {}
-
-// おてつだい保存
-try {
-  window.kidsAllowanceSaveChores = function (arr) {
-    try {
-      saveChores(arr);
-    } catch (e) {
-      console.warn("saveChores failed", e);
-    }
-  };
-} catch {}
-
-// おてつだい適用
-try {
-  window.kidsAllowanceApplyChores = function (arr) {
-    try {
-      state.chores = Array.isArray(arr) ? arr : [];
-      save();
-      renderChores();
-    } catch (e) {
-      console.warn("applyChores failed", e);
-    }
-  };
-} catch {}
-
-// クラウド取引 → UI/stateに反映
-try {
-  window.kidsAllowanceOnCloudTx = function (key, tx) {
-    try {
-      if (!tx) return;
-      window._cloudSeen = window._cloudSeen || new Set();
-      if (window._cloudSeen.has(key)) return;
-      window._cloudSeen.add(key);
-      const t = {
-        id: id(),
-        type: tx.type === "add" ? "income" : "expense",
-        amount: Math.round(Number(tx.amount) || 0),
-        note: tx.label || "",
-        dateISO: new Date(tx.timestamp || Date.now()).toISOString(),
-      };
-      const recent = state.transactions.slice(-5);
-      const dup = recent.some(
-        (u) =>
-          u.type === t.type &&
-          u.amount === t.amount &&
-          u.note === t.note &&
-          Math.abs(new Date(u.dateISO) - new Date(t.dateISO)) < 2000
-      );
-      if (dup) return;
-      state.transactions.push(t);
-      save();
-      renderHome();
-      renderTransactions();
-    } catch (e) {
-      console.warn("kidsAllowanceOnCloudTx failed", e);
-    }
-  };
-} catch {}
+  }, 200);
+};
