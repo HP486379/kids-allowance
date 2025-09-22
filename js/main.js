@@ -25,21 +25,14 @@ window.addEventListener("DOMContentLoaded", () => {
   } catch {}
 
   try {
-    listenBalance((bal) => {
-      if (bal == null) return;
-      const el = document.getElementById('balance');
-      if (el) el.textContent = `\\${Number(bal).toLocaleString('ja-JP')}`;
-      } 
-      catch {}
-
-  // 鏡映情報: Firebase 全取引をロードして同期
-try {
   listenBalance((bal) => {
     if (bal == null) return;
     const el = document.getElementById('balance');
     if (el) el.textContent = `￥${Number(bal).toLocaleString('ja-JP')}`;
   });
 } catch {}
+
+  // 鏡映情報: Firebase 全取引をロードして同期
 
       });
     });
