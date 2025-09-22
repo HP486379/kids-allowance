@@ -34,7 +34,6 @@
   // 蜿門ｼ募ｱ･豁ｴ・医け繝ｩ繧ｦ繝会ｼ芽ｳｼ隱ｭ: 迴ｾ迥ｶ縺ｯ繝ｭ繧ｰ縺ｮ縺ｿ縲ょｿ・ｦ√↑繧蔚I縺ｸ蜿肴丐
   try {
     listenTransactions((key, tx) => { try{ if(window.kidsAllowanceOnCloudTx) window.kidsAllowanceOnCloudTx(key, tx); }catch(e){ console.warn('onCloudTx hook failed', e);} console.log('Firebase: new transaction', key, tx); });
-    });
   } catch {}
 });
 
