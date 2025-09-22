@@ -97,3 +97,18 @@ export function listenTransactions(callback) {
     callback?.(snapshot.key, snapshot.val());
   });
 }
+
+
+
+
+// ===== 全件読み込み（初期ロード用） =====
+export function loadAllTransactions(callback) {
+  const uid = getUid();
+  const txRef = ref(db, users//transactions);
+  onValue(txRef, (snapshot) => {
+    const data = snapshot.val() || {};
+    const list = Object.entries(data).map(([key, val]) => ({ id: key, ...val }));
+    callback?.(list);
+  });
+}
+
