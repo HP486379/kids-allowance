@@ -1,6 +1,6 @@
 ﻿// Firebase SDK を読み込んでいる前提 (index.html に script タグあり)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import { getDatabase, ref, push, onValue, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { getDatabase, ref, push, onValue, set, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 // Firebase 設定
 const firebaseConfig = {
@@ -74,5 +74,26 @@ export function listenBalance(callback) {
   onValue(ref(db, `users/${uid}/balance`), (snap) => {
     const v = snap.val();
     callback(v && typeof v.value !== 'undefined' ? v.value : null);
+  });
+}
+
+// ===== 取引履歴: 保存/購読 =====
+export async function addTransaction(tx) {
+  const uid = getUid();
+  const txRef = ref(db, `users/${uid}/transactions`);
+  const payload = {
+    type: tx?.type || 'add',
+    amount: Number(tx?.amount) || 0,
+    label: tx?.label ?? tx?.note ?? '',
+    timestamp: tx?.timestamp || Date.now()
+  };
+  return push(txRef, payload);
+}
+
+export function listenTransactions(callback) {
+  const uid = getUid();
+  const txRef = ref(db, `users/${uid}/transactions`);
+  onChildAdded(txRef, (snapshot) => {
+    callback?.(snapshot.key, snapshot.val());
   });
 }

@@ -1,4 +1,4 @@
-import { saveSummary, saveProfile, listenProfile, updateBalance, listenBalance } from "./firebase.js";
+import { saveSummary, saveProfile, listenProfile, updateBalance, listenBalance, addTransaction, listenTransactions } from "./firebase.js";
 
 // ====== Firebase 簡易UI連携 ======
 // 起動時にクラウドのプロフィール/残高を購読してUIを更新（軽量）
@@ -29,6 +29,13 @@ window.addEventListener("DOMContentLoaded", () => {
       if (bal == null) return;
       const el = document.getElementById('balance');
       if (el) el.textContent = `\\${Number(bal).toLocaleString('ja-JP')}`;
+    });
+  } catch {}
+
+  // 取引履歴（クラウド）購読: 現状はログのみ。必要ならUIへ反映
+  try {
+    listenTransactions((key, tx) => {
+      console.log('Firebase: new transaction', key, tx);
     });
   } catch {}
 });
@@ -72,6 +79,21 @@ window.kidsAllowanceSaveProfile = function (state) {
       console.log('Firebase: profile saved');
     } catch (e) { console.warn('profile save failed', e); }
   }, 300);
+};
+
+// 取引追加時のフック: app.js の addTx から呼ぶ
+window.kidsAllowanceAddTx = async function (t) {
+  try {
+    const mapped = {
+      type: (t?.type === 'income' || t?.type === 'chore') ? 'add' : 'subtract',
+      amount: Number(t?.amount) || 0,
+      label: t?.note || '',
+      timestamp: Date.parse(t?.dateISO || '') || Date.now()
+    };
+    await addTransaction(mapped);
+  } catch (e) {
+    console.warn('addTransaction failed', e);
+  }
 };
 
 // 残高の更新（おこづかい加減時）
