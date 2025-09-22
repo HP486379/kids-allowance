@@ -1,8 +1,15 @@
 // main.js
 
 document.addEventListener("DOMContentLoaded", () => {
-  renderAll();
-
+  try {
+    // 初期描画（必要なUIを順番に呼び出し）
+    renderHome();
+    renderTransactions();
+    renderGoals();
+    renderChores();
+   } catch (e) {
+     console.warn("initial render failed", e);
+     }
   // --- Firebase購読セットアップ ---
   try {
     listenProfile((prof) => {
