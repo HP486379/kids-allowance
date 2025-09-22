@@ -38,7 +38,7 @@ window.addEventListener("DOMContentLoaded", () => {
       console.log('Firebase: new transaction', key, tx);
     });
   } catch {}
-});
+}
 
 // ====== app.js 縺九ｉ縺ｮ菫晏ｭ倥ヵ繝・け ======
 let syncTimer = null;
