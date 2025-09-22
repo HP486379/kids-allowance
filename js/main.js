@@ -1,6 +1,6 @@
-import { saveSummary, saveProfile, listenProfile, updateBalance, listenBalance, addTransaction, listenTransactions } from "./firebase.js";
+﻿import { saveSummary, saveProfile, listenProfile, updateBalance, listenBalance, addTransaction, listenTransactions } from "./firebase.js";
 
-// ====== Firebase 連携（購読） ======
+// ====== Firebase 騾｣謳ｺ・郁ｳｼ隱ｭ・・======
 window.addEventListener("DOMContentLoaded", () => {
   try {
     listenProfile((p) => {
@@ -41,7 +41,7 @@ window.addEventListener("DOMContentLoaded", () => {
   } catch {}
 });
 
-// ====== app.js からの保存フック ======
+// ====== app.js 縺九ｉ縺ｮ菫晏ｭ倥ヵ繝・け ======
 let syncTimer = null;
 window.kidsAllowanceSync = function syncToFirebase(state) {
   if (syncTimer) clearTimeout(syncTimer);
@@ -54,21 +54,20 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
       }, 0);
       const summary = { balance, goals: state.goals || [] };
       await saveSummary(summary);
-      if (typeof window.toast === 'function') window.toast('Firebaseへ同期完了');
-      console.log('Firebaseへ同期完了', summary);
+      if (typeof window.toast === 'function') window.toast('Firebase縺ｸ蜷梧悄螳御ｺ・);
+      console.log('Firebase縺ｸ蜷梧悄螳御ｺ・, summary);
     } catch (e) {
-      console.warn('Firebase同期に失敗', e);
-      if (typeof window.toast === 'function') window.toast('Firebase同期に失敗しました');
+      console.warn('Firebase蜷梧悄縺ｫ螟ｱ謨・, e);
+      if (typeof window.toast === 'function') window.toast('Firebase蜷梧悄縺ｫ螟ｱ謨励＠縺ｾ縺励◆');
     }
   }, 500);
 };
 
-// 起動ログ（data.jsonは使わない）
-window.addEventListener('load', () => {
+// 襍ｷ蜍輔Ο繧ｰ・・ata.json縺ｯ菴ｿ繧上↑縺・ｼ・window.addEventListener('load', () => {
   console.log('Firebase mode: data.json fetch is disabled');
 });
 
-// ===== UI から直接呼び出すフック =====
+// ===== UI 縺九ｉ逶ｴ謗･蜻ｼ縺ｳ蜃ｺ縺吶ヵ繝・け =====
 let profTimer = null;
 window.kidsAllowanceSaveProfile = function (state) {
   if (profTimer) clearTimeout(profTimer);
@@ -78,7 +77,7 @@ window.kidsAllowanceSaveProfile = function (state) {
   }, 300);
 };
 
-// 取引追加時のフック: app.js の addTx から呼ぶ
+// 蜿門ｼ戊ｿｽ蜉譎ゅ・繝輔ャ繧ｯ: app.js 縺ｮ addTx 縺九ｉ蜻ｼ縺ｶ
 window.kidsAllowanceAddTx = async function (t) {
   try {
     const mapped = {
@@ -91,8 +90,7 @@ window.kidsAllowanceAddTx = async function (t) {
   } catch (e) { console.warn('addTransaction failed', e); }
 };
 
-// 残高の更新（おこづかい加減時）
-let balTimer = null;
+// 谿矩ｫ倥・譖ｴ譁ｰ・医♀縺薙▼縺九＞蜉貂帶凾・・let balTimer = null;
 window.kidsAllowanceUpdateBalance = function (state) {
   if (balTimer) clearTimeout(balTimer);
   balTimer = setTimeout(async () => {
@@ -106,3 +104,4 @@ window.kidsAllowanceUpdateBalance = function (state) {
   }, 200);
 };
 
+\r\nfunction appendTransactionToUI(tx){\r\n  const list = document.getElementById('transactionList');\r\n  if(!list) return;\r\n  const li = document.createElement('li');\r\n  const sign = (tx.type==='add')? '+':'-';\r\n  const ts = tx.timestamp? new Date(tx.timestamp).toLocaleString():'';\r\n  li.textContent = ${tx.label||'取引'}:  ();\r\n  list.appendChild(li);\r\n}\r\n
