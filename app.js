@@ -323,115 +323,109 @@ function renderChores(){
     try{ if(typeof bindChoreControls=== 'function') bindChoreControls(); }catch(e){}
   }
 function renderSettings(){
-    $('#settingsName').value = state.childName;
-    $('#currency').value = state.currency;
-    $('#themeSelect').value = state.theme || 'cute';
-    const wrap = $('#avatarChoices');
-    const choices = getAvatarChoices();
-    wrap.innerHTML = '';
-    choices.forEach(em=>{
-      const b = document.createElement('button');
-      b.type='button'; b.className='avatar'; b.textContent=em;
-      b.onclick=()=>{ state.avatar = em; save(); renderHeader(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
-      wrap.appendChild(b);
-    });
+  $("#settingsName").value = state.childName;
+  $("#currency").value = state.currency;
+  $("#themeSelect").value = state.theme || "cute";
 
-    $('#settingsName').oninput = (e)=>{ state.childName = e.target.value; save(); $('#childName').value = state.childName; try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
-    $('#currency').onchange = (e)=>{ state.currency = e.target.value; save(); renderHeader(); renderGoals(); renderChores(); renderTransactions(); renderHome(); };
-    $('#themeSelect').onchange = (e)=>{ state.theme = e.target.value; save(); applyTheme(); renderHeader(); renderHome(); renderTransactions(); renderGoals(); renderChores(); renderSettings(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
+  const wrap = $("#avatarChoices");
+  const choices = getAvatarChoices();
+  wrap.innerHTML = "";
+  choices.forEach(em=>{
+    const b = document.createElement("button");
+    b.type='button'; b.className='avatar'; b.textContent=em;
+    b.onclick=()=>{ state.avatar = em; save(); renderHeader(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
+    wrap.appendChild(b);
+  });
+
+  $("#settingsName").oninput = (e)=>{ state.childName = e.target.value; save(); $("#childName").value = state.childName; try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
+  $("#currency").onchange = (e)=>{ state.currency = e.target.value; save(); renderHeader(); renderGoals(); renderChores(); renderTransactions(); renderHome(); };
+  $("#themeSelect").onchange = (e)=>{ state.theme = e.target.value; save(); applyTheme(); renderHeader(); renderHome(); renderTransactions(); renderGoals(); renderChores(); renderSettings(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
+
+  // Reset
+  $("#resetData").onclick = ()=>{
+    if(confirm('データを初期化します。本当によろしいですか？')){
+      localStorage.removeItem(LS_KEY);
+      state = seed();
+      renderAll();
+      toast('リセットしました');
+    }
   };
-    $('#resetData').onclick = ()=>{
-      if(confirm('データをぜんぶけします。よろしいですか？')){
-        localStorage.removeItem(LS_KEY);
-        state = seed();
-        renderAll();
-        toast('リセットしました');
-      }
-    };
-    // Export / Import
-    $('#exportData').onclick = async ()=>{
-      const json = JSON.stringify(state, null, 2);
-      $('#ioTitle').textContent = 'エクスポート';
-      $('#ioOk').textContent = 'コピー';
-      $('#ioText').value = json;
-      openModal($('#ioDialog'));
-      $('#ioOk').onclick = (ev)=>{
-        ev.preventDefault();
-        try{ navigator.clipboard.writeText($('#ioText').value); toast('クリップボードにコピーしました'); }catch{ toast('コピーできない場合は手動で選択してください'); }
-        closeModal($('#ioDialog'));
-      };
-    };
-    $('#importData').onclick = ()=>{
-      $('#ioTitle').textContent = 'インポート';
-      $('#ioOk').textContent = '読み込み';
-      $('#ioText').value = '';
-      openModal($('#ioDialog'));
-      $('#ioOk').onclick = (ev)=>{
-        ev.preventDefault();
-        try{
-          const obj = JSON.parse($('#ioText').value);
-          if(!obj || typeof obj !== 'object') throw new Error('bad');
-          state = { ...initialState(), ...obj };
-          save();
-          renderAll();
-          toast('インポートしました');
-          closeModal($('#ioDialog'));
-        }catch{ toast('JSONを確認してください'); }
-      };
-    };
-    // Profiles (multi-user) controls (inserted safely)
-    (function injectProfileRow(){
-      try{
-        const card = document.querySelector('#view-settings .card');
-        if(!card || document.getElementById('profileRow')) return;
-        const row = document.createElement('div');
-        row.id = 'profileRow'; row.className = 'field-row'; row.style.marginBottom = '8px';
-        const label = document.createElement('label'); label.textContent = 'ひと';
-        const sel = document.createElement('select'); sel.id='profileSelect'; sel.className='input'; sel.style.minWidth = '160px';
-        const addBtn = document.createElement('button'); addBtn.className='btn'; addBtn.textContent='追加';
-        const renBtn = document.createElement('button'); renBtn.className='btn'; renBtn.textContent='なまえ変更';
-        const delBtn = document.createElement('button'); delBtn.className='btn danger'; delBtn.textContent='けす';
-        row.appendChild(label); row.appendChild(sel); row.appendChild(addBtn); row.appendChild(renBtn); row.appendChild(delBtn);
-        card.insertBefore(row, card.firstChild);
-        function refreshSelect(){
-          sel.innerHTML = '';
-          (META && META.profiles || []).forEach(p=>{
-            const o=document.createElement('option'); o.value=p.id; o.textContent=p.name||'なまえ'; if(p.id===META.currentId) o.selected=true; sel.appendChild(o);
-          });
-        }
-        refreshSelect();
-        sel.onchange = ()=>{ if(sel.value) switchProfile(sel.value); };
-        addBtn.onclick = ()=>{
-          const name = prompt('なまえ'); if(!name) return;
-          const id = idGen(); META.profiles.push({id,name}); META.currentId=id; localStorage.setItem(META_KEY, JSON.stringify(META));
-          state = initialState(); state.childName = name; save(); renderAll();
-        };
-        renBtn.onclick = ()=>{
-          const p = META.profiles.find(x=>x.id===META.currentId); if(!p) return;
-          const name = prompt('なまえ', p.name)||p.name; p.name=name; localStorage.setItem(META_KEY, JSON.stringify(META)); refreshSelect();
-          state.childName = name; save(); renderHeader();
-        };
-        delBtn.onclick = ()=>{
-          if(META.profiles.length<=1){ alert('これ以上けせません'); return; }
-          if(!confirm('このひとをけしますか？')) return;
-          const cur=META.currentId; META.profiles = META.profiles.filter(x=>x.id!==cur);
-          try{ localStorage.removeItem(pidKey(cur)); }catch{}
-          META.currentId = META.profiles[0].id; localStorage.setItem(META_KEY, JSON.stringify(META));
-          state = loadProfileToActive(META.currentId) || initialState(); renderAll();
-        };
-      }catch{}
-    })();
-    // Header quick edits
-    $('#childName').oninput = (e)=>{ state.childName = e.target.value; save(); $('#settingsName').value = state.childName; try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
-    $('#avatarButton').onclick = ()=>{
-      // cycle avatar
-      const choices = getAvatarChoices();
-      const idx = (choices.indexOf(state.avatar)+1) % choices.length;
-      state.avatar = choices[idx]; save(); renderHeader(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{}
-    };
-  }
 
-  // ----- Actions -----
+  // Export / Import
+  $("#exportData").onclick = async ()=>{
+    const json = JSON.stringify(state, null, 2);
+    $("#ioTitle").textContent = 'エクスポート';
+    $("#ioOk").textContent = 'コピー';
+    $("#ioText").value = json;
+    openModal($("#ioDialog"));
+    $("#ioOk").onclick = (ev)=>{
+      ev.preventDefault();
+      try{ navigator.clipboard.writeText($("#ioText").value); toast('クリップボードにコピーしました'); }catch{ toast('コピーできない時は手動で選択してください'); }
+      closeModal($("#ioDialog"));
+    };
+  };
+  $("#importData").onclick = ()=>{
+    $("#ioTitle").textContent = 'インポート';
+    $("#ioOk").textContent = '読み込み';
+    $("#ioText").value = '';
+    openModal($("#ioDialog"));
+    $("#ioOk").onclick = (ev)=>{
+      ev.preventDefault();
+      try{
+        const obj = JSON.parse($("#ioText").value);
+        if(!obj || typeof obj !== 'object') throw new Error('bad');
+        state = { ...initialState(), ...obj };
+        save();
+        renderAll();
+        toast('インポートしました');
+        closeModal($("#ioDialog"));
+      }catch{ toast('JSONを確認してください'); }
+    };
+  };
+
+  // Profiles (multi-user) controls (inserted safely)
+  (function injectProfileRow(){
+    try{
+      const card = document.querySelector('#view-settings .card');
+      if(!card || document.getElementById('profileRow')) return;
+      const row = document.createElement('div');
+      row.id = 'profileRow'; row.className = 'field-row'; row.style.marginBottom = '8px';
+      const label = document.createElement('label'); label.textContent = 'ひと';
+      const sel = document.createElement('select'); sel.id='profileSelect'; sel.className='input'; sel.style.minWidth = '160px';
+      const addBtn = document.createElement('button'); addBtn.className='btn'; addBtn.textContent='追加';
+      const renBtn = document.createElement('button'); renBtn.className='btn'; renBtn.textContent='なまえ変更';
+      const delBtn = document.createElement('button'); delBtn.className='btn danger'; delBtn.textContent='けす';
+      row.appendChild(label); row.appendChild(sel); row.appendChild(addBtn); row.appendChild(renBtn); row.appendChild(delBtn);
+      card.insertBefore(row, card.firstChild);
+      function refreshSelect(){
+        sel.innerHTML = '';
+        (META && META.profiles || []).forEach(p=>{
+          const o=document.createElement('option'); o.value=p.id; o.textContent=p.name||'なまえ'; if(p.id===META.currentId) o.selected=true; sel.appendChild(o);
+        });
+      }
+      refreshSelect();
+      sel.onchange = ()=>{ if(sel.value) switchProfile(sel.value); };
+      addBtn.onclick = ()=>{
+        const name = prompt('なまえ'); if(!name) return;
+        const id = idGen(); META.profiles.push({id,name}); META.currentId=id; localStorage.setItem(META_KEY, JSON.stringify(META));
+        state = initialState(); state.childName = name; save(); renderAll();
+      };
+      renBtn.onclick = ()=>{
+        const p = META.profiles.find(x=>x.id===META.currentId); if(!p) return;
+        const name = prompt('なまえ', p.name)||p.name; p.name=name; localStorage.setItem(META_KEY, JSON.stringify(META)); refreshSelect();
+        state.childName = name; save(); renderHeader();
+      };
+      delBtn.onclick = ()=>{
+        if(META.profiles.length<=1){ alert('最低1名必要です'); return; }
+        if(!confirm('このひとを削除しますか？')) return;
+        const cur=META.currentId; META.profiles = META.profiles.filter(x=>x.id!==cur);
+        try{ localStorage.removeItem(pidKey(cur)); }catch{}
+        META.currentId = META.profiles[0].id; localStorage.setItem(META_KEY, JSON.stringify(META));
+        state = loadProfileToActive(META.currentId) || initialState(); renderAll();
+      };
+    }catch{}
+  })();
+}// ----- Actions -----
   function addTx(type, amount, note, animateCoin=false){
     const t = { id:id(), type, amount:Math.round(amount), note, dateISO:new Date().toISOString() };
     state.transactions.push(t);
@@ -648,6 +642,7 @@ function bindChoreControls(){
 // ----- Init -----
   renderAll();
 })();
+
 
 
 
