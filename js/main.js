@@ -32,14 +32,13 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   } catch {}
 
-  // 初期ロードで全取引を復元（テスト用の transactionList がある場合）
+  // 初期ロードで全取引を復元（本体UIに統合）
   try {
     loadAllTransactions((all) => {
-      const list = document.getElementById('transactionList');
-      if (!list) return;
-      list.innerHTML = "";
       all.sort((a,b)=> (a.timestamp||0)-(b.timestamp||0));
-      all.forEach(tx => appendTransactionToUI(tx));
+      all.forEach(tx => {
+        try { if (window.kidsAllowanceOnCloudTx) window.kidsAllowanceOnCloudTx(tx.id, tx); } catch {}
+      });
     });
   } catch {}
 
@@ -117,14 +116,4 @@ window.kidsAllowanceUpdateBalance = function (state) {
   }, 200);
 };
 
-// テスト用：単純な取引リスト描画（存在時のみ）
-function appendTransactionToUI(tx){
-  const list = document.getElementById('transactionList');
-  if(!list) return;
-  const li = document.createElement('li');
-  const sign = (tx.type==='add')? '+':'-';
-  const ts = tx.timestamp? new Date(tx.timestamp).toLocaleString():'';
-  li.textContent = `${tx.label||'取引'}: ${sign}${tx.amount} (${ts})`;
-  list.appendChild(li);
-}
-
+// 取引の本体UI（おこづかいタブ）への統合は app.js 内の kidsAllowanceOnCloudTx が実施
