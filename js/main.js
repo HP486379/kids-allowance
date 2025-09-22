@@ -30,7 +30,6 @@ window.addEventListener("DOMContentLoaded", () => {
     const el = document.getElementById('balance');
     if (el) el.textContent = `¥${Number(bal).toLocaleString('ja-JP')}`;
   });
-} catch {}
 
   // 鏡映情報: Firebase 全取引をロードして同期
   } catch {}\r\n\r\n  try { listenGoals((arr)=>{ try{ if(window.kidsAllowanceApplyGoals) window.kidsAllowanceApplyGoals(arr); }catch{} }); } catch {}\r\n  try { listenChores((arr)=>{ try{ if(window.kidsAllowanceApplyChores) window.kidsAllowanceApplyChores(arr); }catch{} }); } catch {}\r\n\r\n  try { listenTransactions((key, tx) => {
