@@ -35,7 +35,9 @@ window.addEventListener("DOMContentLoaded", () => {
         document.body.classList.toggle("theme-cute", p.theme !== "adventure");
       }
     });
-  } catch {}
+  } catch (e) {
+    console.warn("listenProfile failed", e);
+  }
 
   try {
     listenBalance((bal) => {
@@ -43,24 +45,36 @@ window.addEventListener("DOMContentLoaded", () => {
       const el = document.getElementById("balance");
       if (el) el.textContent = `¥${Number(bal).toLocaleString("ja-JP")}`;
     });
-  } catch {}
+  } catch (e) {
+    console.warn("listenBalance failed", e);
+  }
 
   // ====== Firebase 全取引・目標・お手伝い同期 ======
   try {
     listenGoals((arr) => {
       try {
+        console.debug("main.js: listenGoals ->", arr);
         if (window.kidsAllowanceApplyGoals) window.kidsAllowanceApplyGoals(arr);
-      } catch {}
+      } catch (inner) {
+        console.warn("applyGoals hook failed", inner);
+      }
     });
-  } catch {}
+  } catch (e) {
+    console.warn("listenGoals failed", e);
+  }
 
   try {
     listenChores((arr) => {
       try {
+        console.debug("main.js: listenChores ->", arr);
         if (window.kidsAllowanceApplyChores) window.kidsAllowanceApplyChores(arr);
-      } catch {}
+      } catch (inner) {
+        console.warn("applyChores hook failed", inner);
+      }
     });
-  } catch {}
+  } catch (e) {
+    console.warn("listenChores failed", e);
+  }
 
   try {
     listenTransactions((key, tx) => {
@@ -71,7 +85,9 @@ window.addEventListener("DOMContentLoaded", () => {
       }
       console.log("Firebase: new transaction", key, tx);
     });
-  } catch {}
+  } catch (e) {
+    console.warn("listenTransactions failed", e);
+  }
 });
 
 // ====== app.js から呼ばれるフック ======
@@ -85,21 +101,37 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
         if (t.type === "expense" || t.type === "goal") return sum - t.amount;
         return sum;
       }, 0);
-      const summary = { balance, goals: state.goals || [] };
 
-      // 重要: summaries ノードに保存するだけでなく、
-      // listenGoals が監視している users/{uid}/goals にも保存する
+      // goals を配列に正規化（オブジェクトや null にも対応）
+      const goals = Array.isArray(state.goals)
+        ? state.goals
+        : state.goals
+        ? Object.values(state.goals)
+        : [];
+
+      const summary = { balance, goals };
+
+      // まず users/{uid}/goals に確実に保存する（listenGoals が反応するノード）
       try {
-        await saveGoals(summary.goals);
+        console.debug("Sync -> saving goals:", goals);
+        await saveGoals(goals);
+        console.debug("saveGoals -> saved");
       } catch (e) {
         console.warn("saveGoals failed", e);
       }
 
-      await saveSummary(summary);
+      // 従来通り summaries ノードにも保存
+      try {
+        await saveSummary(summary);
+        console.debug("saveSummary -> saved", summary);
+      } catch (e) {
+        console.warn("saveSummary failed", e);
+      }
 
       try {
         if (window.toast) window.toast("Firebaseへ同期完了");
       } catch {}
+
       console.log("Firebaseへ同期完了", summary);
     } catch (e) {
       console.warn("Firebase同期に失敗", e);
