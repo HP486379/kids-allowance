@@ -111,7 +111,7 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
 
       const summary = { balance, goals };
 
-      // デバッグログ：保存前
+      // デバッグ: 保存前ログ
       console.debug("Sync -> saving goals:", goals);
 
       // users/{uid}/goals に保存（listenGoals が反応するノード）
