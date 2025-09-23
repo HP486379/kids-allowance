@@ -37,14 +37,15 @@ import {
     try { document.body.appendChild(d); } catch {}
   });
   window.debugLog = function (msg) {
-    try {
-      const el = document.getElementById("syncDebug");
-      const time = new Date().toLocaleTimeString();
-      const text = typeof msg === "string" ? msg : JSON.stringify(msg);
-      el.innerText = `${el.innerText}\n[${time}] ${text}`;
-      el.scrollTop = el.scrollHeight;
-    } catch (e) { /* ignore */ }
-  };
+  try {
+    const el = document.getElementById("syncDebug");
+    const time = new Date().toLocaleTimeString();
+    const text = typeof msg === "string" ? msg : JSON.stringify(msg);
+-    el.innerText = `${el.innerText}\n[${time}] ${text}`;
++    el.innerText = el.innerText + "\n[" + time + "] " + text;
+    el.scrollTop = el.scrollHeight;
+  } catch (e) { /* ignore */ }
+};
 })();
 
 // ====== Firebase 初期化 ======
