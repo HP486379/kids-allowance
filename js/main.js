@@ -86,7 +86,17 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
         return sum;
       }, 0);
       const summary = { balance, goals: state.goals || [] };
+
+      // 重要: summaries ノードに保存するだけでなく、
+      // listenGoals が監視している users/{uid}/goals にも保存する
+      try {
+        await saveGoals(summary.goals);
+      } catch (e) {
+        console.warn("saveGoals failed", e);
+      }
+
       await saveSummary(summary);
+
       try {
         if (window.toast) window.toast("Firebaseへ同期完了");
       } catch {}
