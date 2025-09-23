@@ -1,4 +1,4 @@
-﻿// Firebase SDK を読み込んでいる前提 (index.html に script タグあり)
+// Firebase SDK を読み込んでいる前提 (index.html に script タグあり)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getDatabase, ref, push, onValue, set, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
@@ -138,4 +138,3 @@ export function listenChores(callback) {
     callback?.(snap.val() || []);
   });
 }
-
