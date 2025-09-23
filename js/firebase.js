@@ -1,22 +1,39 @@
-// Firebase SDK を読み込んでいる前提 (index.html に script タグあり)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import { getDatabase, ref, push, onValue, set, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import {
+  getDatabase,
+  ref,
+  push,
+  onValue,
+  set,
+  onChildAdded,
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 // Firebase 設定
 const firebaseConfig = {
   apiKey: "AIzaSyAF2m74NGvgrjd9eh5zVrfrxVO3ZC8aUww",
   authDomain: "kids-allowance-51817.firebaseapp.com",
-  databaseURL: "https://kids-allowance-51817-default-rtdb.asia-southeast1.firebasedatabase.app",
+  databaseURL:
+    "https://kids-allowance-51817-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "kids-allowance-51817",
   storageBucket: "kids-allowance-51817.appspot.com",
   messagingSenderId: "946782238727",
-  appId: "1:946782238727:web:45e384ccdfc47aacaa92a2"
+  appId: "1:946782238727:web:45e384ccdfc47aacaa92a2",
 };
 
 // Firebase 初期化
 const app = initializeApp(firebaseConfig);
-// 地域付きURLを明示指定
 const db = getDatabase(app, firebaseConfig.databaseURL);
+
+// ===== ユーザー識別（ローカルのプロフィールIDを使用） =====
+export function getUid() {
+  try {
+    const m = JSON.parse(localStorage.getItem("kid-allowance:meta") || "{}");
+    return String(m.currentId || "guest");
+  } catch (e) {
+    console.warn("getUid parse error", e);
+    return "guest";
+  }
+}
 
 // ===== 名前を保存 =====
 export function saveName(name) {
@@ -29,7 +46,7 @@ export function listenNames(callback) {
   const namesRef = ref(db, "names/");
   onValue(namesRef, (snapshot) => {
     const data = snapshot.val() || {};
-    const list = Object.values(data).map(item => item.value);
+    const list = Object.values(data).map((item) => item.value);
     callback(list);
   });
 }
@@ -40,20 +57,13 @@ export async function saveSummary(summary) {
   await set(node, { ...summary, timestamp: Date.now() });
 }
 
-// ===== ユーザー識別（ローカルのプロフィールIDを使用） =====
-function getUid() {
-  try {
-    const m = JSON.parse(localStorage.getItem('kid-allowance:meta') || '{}');
-    return m.currentId || 'guest';
-  } catch {
-    return 'guest';
-  }
-}
-
 // ===== プロフィール保存/購読 =====
 export async function saveProfile(profile) {
   const uid = getUid();
-  await set(ref(db, `users/${uid}/profile`), { ...profile, timestamp: Date.now() });
+  await set(ref(db, `users/${uid}/profile`), {
+    ...profile,
+    timestamp: Date.now(),
+  });
 }
 
 export function listenProfile(callback) {
@@ -66,14 +76,17 @@ export function listenProfile(callback) {
 // ===== 残高保存/購読 =====
 export async function updateBalance(balance) {
   const uid = getUid();
-  await set(ref(db, `users/${uid}/balance`), { value: Number(balance) || 0, timestamp: Date.now() });
+  await set(ref(db, `users/${uid}/balance`), {
+    value: Number(balance) || 0,
+    timestamp: Date.now(),
+  });
 }
 
 export function listenBalance(callback) {
   const uid = getUid();
   onValue(ref(db, `users/${uid}/balance`), (snap) => {
     const v = snap.val();
-    callback(v && typeof v.value !== 'undefined' ? v.value : null);
+    callback(v && typeof v.value !== "undefined" ? v.value : null);
   });
 }
 
@@ -82,10 +95,10 @@ export async function addTransaction(tx) {
   const uid = getUid();
   const txRef = ref(db, `users/${uid}/transactions`);
   const payload = {
-    type: tx?.type || 'add',
+    type: tx?.type || "add",
     amount: Number(tx?.amount) || 0,
-    label: tx?.label ?? tx?.note ?? '',
-    timestamp: tx?.timestamp || Date.now()
+    label: tx?.label ?? tx?.note ?? "",
+    timestamp: tx?.timestamp || Date.now(),
   };
   return push(txRef, payload);
 }
@@ -98,13 +111,10 @@ export function listenTransactions(callback) {
   });
 }
 
-
-
-
 // ===== 全件読み込み（初期ロード用） =====
 export function loadAllTransactions(callback) {
   const uid = getUid();
-  const txRef = ref(db, 'users/' + uid + '/transactions');
+  const txRef = ref(db, "users/" + uid + "/transactions");
   onValue(txRef, (snapshot) => {
     const data = snapshot.val() || {};
     const list = Object.entries(data).map(([key, val]) => ({ id: key, ...val }));
@@ -112,29 +122,71 @@ export function loadAllTransactions(callback) {
   });
 }
 
-
-
 // ===== Goals / Chores 保存・購読 =====
+// 改善点：保存時に配列→オブジェクトへ正規化し、購読時に常に配列を返すようにする。
+// これにより端末間での保存フォーマット差による不整合を防ぐ。
+
+function makeIdIfMissing(item) {
+  if (item && item.id) return String(item.id);
+  return `g_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+}
+
 export async function saveGoals(goals) {
   const uid = getUid();
-  await set(ref(db, 'users/' + uid + '/goals'), goals || []);
+  const node = ref(db, "users/" + uid + "/goals");
+  const arr = Array.isArray(goals) ? goals : [];
+  const payload = {};
+  arr.forEach((g) => {
+    const id = makeIdIfMissing(g);
+    // 既存のプロパティはそのまま保持。id を埋める。
+    payload[id] = { ...(g || {}), id };
+  });
+  // 空であれば空オブジェクトとして保存（配列だと穴が生じるため）
+  await set(node, Object.keys(payload).length ? payload : {});
+  console.debug("saveGoals -> saved", uid, payload);
 }
 
 export async function saveChores(chores) {
   const uid = getUid();
-  await set(ref(db, 'users/' + uid + '/chores'), chores || []);
+  const node = ref(db, "users/" + uid + "/chores");
+  const arr = Array.isArray(chores) ? chores : [];
+  const payload = {};
+  arr.forEach((c) => {
+    const id = c && c.id ? String(c.id) : `c_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    payload[id] = { ...(c || {}), id };
+  });
+  await set(node, Object.keys(payload).length ? payload : {});
+  console.debug("saveChores -> saved", uid, payload);
+}
+
+function normalizeSnapshotToArray(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) {
+    // 配列の場合は index を id にするが、配列穴を削除
+    return val
+      .map((v, i) => (v ? { id: v.id || String(i), ...v } : null))
+      .filter(Boolean);
+  }
+  // オブジェクトの場合はキーを id にして配列化
+  return Object.entries(val).map(([k, v]) => ({ id: k, ...(v || {}) }));
 }
 
 export function listenGoals(callback) {
   const uid = getUid();
-  onValue(ref(db, 'users/' + uid + '/goals'), (snap) => {
-    callback?.(snap.val() || []);
+  onValue(ref(db, "users/" + uid + "/goals"), (snap) => {
+    const val = snap.val();
+    const arr = normalizeSnapshotToArray(val);
+    console.debug("listenGoals -> received", uid, arr);
+    callback?.(arr);
   });
 }
 
 export function listenChores(callback) {
   const uid = getUid();
-  onValue(ref(db, 'users/' + uid + '/chores'), (snap) => {
-    callback?.(snap.val() || []);
+  onValue(ref(db, "users/" + uid + "/chores"), (snap) => {
+    const val = snap.val();
+    const arr = normalizeSnapshotToArray(val);
+    console.debug("listenChores -> received", uid, arr);
+    callback?.(arr);
   });
 }
