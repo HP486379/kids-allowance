@@ -42,6 +42,7 @@ import {
       const time = new Date().toLocaleTimeString();
       const text = typeof msg === "string" ? msg : JSON.stringify(msg);
 -      el.innerText = `${el.innerText}\n[${time}] ${text}`;
++      // テンプレートリテラルを避けて文字列連結にする（互換性確保）
 +      el.innerText = el.innerText + "\n[" + time + "] " + text;
       el.scrollTop = el.scrollHeight;
     } catch (e) { /* ignore */ }
