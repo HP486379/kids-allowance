@@ -111,7 +111,7 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
 
       const summary = { balance, goals };
 
-      // まず users/{uid}/goals に確実に保存する（listenGoals が反応するノード）
+      // users/{uid}/goals に保存（listenGoals が反応するノード）
       try {
         console.debug("Sync -> saving goals:", goals);
         await saveGoals(goals);
@@ -128,16 +128,11 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
         console.warn("saveSummary failed", e);
       }
 
-      try {
-        if (window.toast) window.toast("Firebaseへ同期完了");
-      } catch {}
-
+      try { if (window.toast) window.toast("Firebaseへ同期完了"); } catch {}
       console.log("Firebaseへ同期完了", summary);
     } catch (e) {
       console.warn("Firebase同期に失敗", e);
-      try {
-        if (window.toast) window.toast("Firebase同期に失敗しました");
-      } catch {}
+      try { if (window.toast) window.toast("Firebase同期に失敗しました"); } catch {}
     }
   }, 500);
 };
