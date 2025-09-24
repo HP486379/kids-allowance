@@ -220,6 +220,36 @@ window.kidsAllowanceSaveProfile = function (state) {
   }, 300);
 };
 
+// ====== 目標の保存（直接呼び出し + イベント対応）======
+let goalsTimer = null;
+window.kidsAllowanceSaveGoals = function (goals) {
+  if (goalsTimer) clearTimeout(goalsTimer);
+  goalsTimer = setTimeout(async () => {
+    try {
+      const arr = Array.isArray(goals) ? goals : [];
+      await saveGoals(arr);
+      if (typeof window.debugLog === 'function') window.debugLog({ type: 'saveGoals_direct', count: arr.length });
+    } catch (e) {
+      console.warn('saveGoals failed', e);
+      if (typeof window.debugLog === 'function') window.debugLog({ type: 'saveGoals_direct_failed', e: String(e) });
+    }
+  }, 300);
+};
+
+// app.js 側が new CustomEvent('goalsUpdated', { detail: goals }) を dispatch した場合に保存 + UI 反映
+window.addEventListener('goalsUpdated', (e) => {
+  try {
+    const goals = (e && e.detail) ? e.detail : [];
+    if (typeof window.kidsAllowanceApplyGoals === 'function') {
+      try { window.kidsAllowanceApplyGoals(goals); } catch (_) {}
+    }
+    window.kidsAllowanceSaveGoals(goals);
+  } catch (err) {
+    console.warn('goalsUpdated handler failed', err);
+    if (typeof window.debugLog === 'function') window.debugLog({ type: 'goalsUpdated_failed', e: String(err) });
+  }
+});
+
 // ====== 取引保存 ======
 window.kidsAllowanceAddTx = async function (t) {
   try {
