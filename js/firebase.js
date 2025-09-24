@@ -27,12 +27,31 @@ const db = getDatabase(app, firebaseConfig.databaseURL);
 // ===== ユーザー識別（ローカルのプロフィールIDを使用） =====
 export function getUid() {
   try {
+    // 1) URL クエリ優先（?uid=xxxx または ?code=xxxx）
+    try {
+      const params = new URLSearchParams(location.search || "");
+      const q = params.get("uid") || params.get("code");
+      if (q) return String(q);
+    } catch {}
+
+    // 2) 共有コード（設定/コンソールで保存可能）
+    try {
+      const share = localStorage.getItem("kid-allowance:share-code");
+      if (share) return String(share);
+    } catch {}
+
+    // 3) プロファイルの currentId（従来どおり）
     const m = JSON.parse(localStorage.getItem("kid-allowance:meta") || "{}");
     return String(m.currentId || "guest");
   } catch (e) {
     console.warn("getUid parse error", e);
     return "guest";
   }
+}
+
+// 共有コードの設定ヘルパー（必要に応じて UI から呼び出し）
+export function setShareUid(uid) {
+  try { localStorage.setItem("kid-allowance:share-code", String(uid || "")); } catch {}
 }
 
 // ===== 名前を保存 =====
