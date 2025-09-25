@@ -690,6 +690,32 @@ try{
   };
 }catch{}
 
+// In case goals arrived before this handler existed, apply cached goals
+try{
+  (function applyCachedGoalsOnce(){
+    try{
+      const raw = localStorage.getItem('kids-allowance:goals');
+      if(raw){
+        const g = JSON.parse(raw);
+        if(Array.isArray(g) && typeof window.kidsAllowanceApplyGoals === 'function'){
+          window.kidsAllowanceApplyGoals(g);
+        }
+      }
+    }catch{}
+  })();
+}catch{}
+
+// Also reflect future events emitted before UI boots completely
+try{
+  window.addEventListener('goalsUpdated', (e)=>{
+    try{
+      if(typeof window.kidsAllowanceApplyGoals === 'function'){
+        window.kidsAllowanceApplyGoals((e && e.detail) ? e.detail : []);
+      }
+    }catch{}
+  });
+}catch{}
+
 // Inject Sync ID share/apply controls into Settings card
 try{
   (function setupSyncIdUI(){
