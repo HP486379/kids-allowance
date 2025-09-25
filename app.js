@@ -742,6 +742,30 @@ try{
         const st = loadProfileToActive(id) || initialState(); state = st; renderAll(); toast('同期IDを適用しました');
       }catch(e){ console.warn(e); }
     };
+
+    // Debug helpers (enable with ?debug=1)
+    try {
+      const u = new URLSearchParams(location.search||'');
+      if (u.get('debug') === '1') {
+        const dbgRow = document.createElement('div');
+        dbgRow.className = 'field-row';
+        const btn = document.createElement('button'); btn.className='btn'; btn.textContent='デバッグ: もくひょう反映';
+        btn.onclick = ()=>{
+          try{
+            const raw = localStorage.getItem('kids-allowance:goals');
+            const g = raw ? JSON.parse(raw) : [];
+            if(typeof window.kidsAllowanceApplyGoals === 'function'){
+              window.kidsAllowanceApplyGoals(Array.isArray(g)?g:[]);
+              toast('もくひょうを反映しました');
+            } else {
+              toast('applyGoals が未定義です');
+            }
+          }catch(e){ console.warn(e); toast('反映に失敗しました'); }
+        };
+        dbgRow.appendChild(btn);
+        card.appendChild(dbgRow);
+      }
+    } catch {}
   })();
 }catch{}
 })();
