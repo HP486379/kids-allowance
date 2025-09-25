@@ -676,9 +676,12 @@ function bindChoreControls(){
         note: tx.label || '',
         dateISO: new Date(tx.timestamp || Date.now()).toISOString()
       };
-      // robust duplicate guard: check last 100 by content and near-time (±5分)
+      // robust duplicate guard: treat goal/expense as same "minus" kind
+      const isPlus = (tp) => tp==='income' || tp==='chore' || tp==='add';
+      const isMinus = (tp) => tp==='expense' || tp==='goal' || tp==='subtract';
+      const sameKind = (a,b) => (isPlus(a)&&isPlus(b)) || (isMinus(a)&&isMinus(b));
       const recent = state.transactions.slice(-100);
-      const dup = recent.some(u => u && u.type===t.type && u.amount===t.amount && (u.note||'')===(t.note||'') && Math.abs(new Date(u.dateISO) - new Date(t.dateISO)) < 5*60*1000);
+      const dup = recent.some(u => u && sameKind(u.type, t.type) && u.amount===t.amount && (u.note||'')===(t.note||'') && Math.abs(new Date(u.dateISO) - new Date(t.dateISO)) < 5*60*1000);
       if(dup) return;
       // defensive: extremely large amount confirmation in debug mode
       if(t.amount >= 10000 && typeof window.debugLog === 'function') window.debugLog({ type:'cloudTx_large', t });
