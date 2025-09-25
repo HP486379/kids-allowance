@@ -182,6 +182,7 @@ function renderHome(){
       const amount = parseAmount($('#quickAmount').value);
       const note = $('#quickNote').value.trim();
       if(!validAmount(amount)) return toast('金額を正しく入れてね');
+      if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
       addTx(type, amount, note || labelForType(type), true);
       $('#quickAmount').value = '';
       $('#quickNote').value = '';
@@ -218,6 +219,7 @@ function renderTransactions(){
       const amount = parseAmount($('#txAmount').value);
       const note = $('#txNote').value.trim();
       if(!validAmount(amount)) return toast('金額を正しく入れてね');
+      if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
       addTx(type, amount, note || labelForType(type), true);
       closeModal($('#txDialog'));
       e.target.reset();
@@ -429,7 +431,7 @@ function renderSettings(){
   })();
 }// ----- Actions -----
   function addTx(type, amount, note, animateCoin=false){
-    const t = { id:id(), type, amount:Math.round(amount), note, dateISO:new Date().toISOString() };
+    const t = { id:id(), type, amount:sanitizeAmount(amount), note, dateISO:new Date().toISOString() };
     state.transactions.push(t);
     save();
     try{ if(window.kidsAllowanceAddTx) window.kidsAllowanceAddTx(t); }catch{}
@@ -446,7 +448,8 @@ function contributeToGoal(goal){
     const val = prompt(`いくらちょきんする？（最大 ${money(max)}）`, Math.min(300, max).toString());
     const amount = parseAmount(val||'');
     if(!validAmount(amount)) return;
-    if(amount>max) return toast('ざんだかよりおおいよ');
+    if(amount > max) return toast('ざんだかよりおおいよ');
+    if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
     goal.saved += amount;
     addTx('goal', amount, `ちょきん: ${goal.name}`);
     save();
@@ -534,11 +537,25 @@ function dateJa(iso){
 function labelForType(type){
     return type==='income' ? 'おこづかい' : type==='expense' ? 'おかいもの' : type==='goal' ? 'ちょきん' : 'おてつだい';
   }
+// 入力金額の安全なパース（小数や全角・通貨記号を考慮）
+function toHalfWidthDigits(s){
+    return String(s||'').replace(/[０-９]/g, c=> String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+}
 function parseAmount(v){
-    if(typeof v !== 'string') return 0;
-    v = v.replace(/[^0-9]/g,'');
-    return v ? parseInt(v,10) : 0;
-  }
+    v = toHalfWidthDigits(v);
+    if(typeof v !== 'string') v = String(v||'');
+    v = v.trim().replace(/[¥￥$,\s]/g,''); // 通貨・カンマ・空白を除去
+    // 小数セパレータが含まれる場合は整数部のみ採用（100.50 -> 100）
+    const intPart = v.split(/[\.｡､，．]/)[0].replace(/[^0-9]/g,'');
+    const n = intPart ? parseInt(intPart,10) : 0;
+    return Number.isFinite(n) ? n : 0;
+}
+function sanitizeAmount(n){
+    n = Math.round(Number(n)||0);
+    if(n < 0) n = 0;
+    if(n > 1_000_000) n = 1_000_000;
+    return n;
+}
 function validAmount(n){ return Number.isFinite(n) && n>0 && n<=1_000_000 }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])) }
 
@@ -652,13 +669,13 @@ function bindChoreControls(){
       window._cloudSeen = window._cloudSeen || new Set();
       if(window._cloudSeen.has(key)) return; // seen
       window._cloudSeen.add(key);
-      const t = {
-        id: id(),
-        type: (tx.type === 'add' ? 'income' : 'expense'),
-        amount: Math.round(Number(tx.amount) || 0),
-        note: tx.label || '',
-        dateISO: new Date(tx.timestamp || Date.now()).toISOString()
-      };
+    const t = {
+      id: id(),
+      type: (tx.type === 'add' ? 'income' : 'expense'),
+      amount: sanitizeAmount(tx.amount),
+      note: tx.label || '',
+      dateISO: new Date(tx.timestamp || Date.now()).toISOString()
+    };
       // simple recent-duplicate guard
       const recent = state.transactions.slice(-5);
       const dup = recent.some(u => u.type===t.type && u.amount===t.amount && u.note===t.note && Math.abs(new Date(u.dateISO) - new Date(t.dateISO)) < 2000);
