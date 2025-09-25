@@ -112,6 +112,7 @@ function computeBalance(){
     renderHome();
     renderTransactions();
     renderGoals();
+    renderSavings();
     renderChores();
     renderSettings();
   }
@@ -283,6 +284,61 @@ function renderGoals(){
       e.target.reset();
       renderGoals();
     };
+  }
+  // ===== Savings (ちょきん確認・戻す) =====
+  function renderSavings(){
+    const wrap = document.getElementById('savingsList');
+    const sumEl = document.getElementById('savingsSummary');
+    if(!wrap || !sumEl) return;
+    wrap.innerHTML = '';
+    const total = (state.goals||[]).reduce((s,g)=> s + Math.max(0, Math.round(Number(g.saved)||0)), 0);
+    sumEl.textContent = `合計: ${money(total)}`;
+    const goals = (state.goals||[]).filter(g => (Math.round(Number(g.saved)||0)) > 0);
+    if(goals.length===0){
+      const li = document.createElement('li');
+      li.textContent = 'まだ ちょきん はないよ';
+      wrap.appendChild(li);
+      return;
+    }
+    goals.forEach(g => {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <div>
+          <div class="note">${escapeHtml(g.name)}</div>
+          <div class="meta">いまの ちょきん: ${money(Math.round(Number(g.saved)||0))}</div>
+        </div>
+        <div class="goal-actions">
+          <button class="btn" data-act="part">すこし もどす</button>
+          <button class="btn danger" data-act="all">ぜんぶ もどす</button>
+        </div>
+      `;
+      wrap.appendChild(li);
+      const [partBtn, allBtn] = li.querySelectorAll('button');
+      partBtn.onclick = ()=> withdrawFromGoal(g, false);
+      allBtn.onclick = ()=> withdrawFromGoal(g, true);
+    });
+  }
+  function withdrawFromGoal(goal, all=false){
+    try{
+      const cur = Math.max(0, Math.round(Number(goal.saved)||0));
+      if(cur<=0) return toast('この もくひょう に ちょきん はないよ');
+      let amount = cur;
+      if(!all){
+        const val = prompt(`いくら もどす？（最大 ${money(cur)}）`, Math.min(300, cur).toString());
+        amount = parseAmount(val||'');
+        if(!validAmount(amount)) return;
+        if(amount > cur) return toast('ちょきん より おおいよ');
+        if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
+      }
+      amount = sanitizeAmount(amount);
+      goal.saved = sanitizeAmount(cur - amount);
+      addTx('income', amount, `もどす: ${goal.name}`);
+      save();
+      renderGoals();
+      renderSavings();
+      renderHome();
+      renderTransactions();
+    }catch{}
   }
 function renderChores(){
     const ul = document.getElementById('choreList');
