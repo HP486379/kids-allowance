@@ -671,6 +671,25 @@ function bindChoreControls(){
   };
 }catch{}
 
+// Remote goals -> apply to UI/state
+try{
+  window.kidsAllowanceApplyGoals = function(goals){
+    try{
+      const arr = Array.isArray(goals) ? goals.map(g => ({
+        id: g && g.id ? String(g.id) : id(),
+        name: (g && g.name) || '',
+        target: Math.round(Number(g && g.target) || 0),
+        saved: Math.round(Number(g && g.saved) || 0)
+      })) : [];
+      // Replace entire goals list
+      state.goals = arr;
+      // Persist locally and re-render; may trigger sync, which is fine
+      save();
+      renderGoals();
+    }catch(e){ console.warn('kidsAllowanceApplyGoals failed', e); }
+  };
+}catch{}
+
 // Inject Sync ID share/apply controls into Settings card
 try{
   (function setupSyncIdUI(){
