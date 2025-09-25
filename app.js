@@ -669,17 +669,19 @@ function bindChoreControls(){
       window._cloudSeen = window._cloudSeen || new Set();
       if(window._cloudSeen.has(key)) return; // seen
       window._cloudSeen.add(key);
-    const t = {
-      id: id(),
-      type: (tx.type === 'add' ? 'income' : 'expense'),
-      amount: sanitizeAmount(tx.amount),
-      note: tx.label || '',
-      dateISO: new Date(tx.timestamp || Date.now()).toISOString()
-    };
-      // simple recent-duplicate guard
-      const recent = state.transactions.slice(-5);
-      const dup = recent.some(u => u.type===t.type && u.amount===t.amount && u.note===t.note && Math.abs(new Date(u.dateISO) - new Date(t.dateISO)) < 2000);
+      const t = {
+        id: id(),
+        type: (tx.type === 'add' ? 'income' : 'expense'),
+        amount: sanitizeAmount(tx.amount),
+        note: tx.label || '',
+        dateISO: new Date(tx.timestamp || Date.now()).toISOString()
+      };
+      // robust duplicate guard: check last 100 by content and near-time (±5分)
+      const recent = state.transactions.slice(-100);
+      const dup = recent.some(u => u && u.type===t.type && u.amount===t.amount && (u.note||'')===(t.note||'') && Math.abs(new Date(u.dateISO) - new Date(t.dateISO)) < 5*60*1000);
       if(dup) return;
+      // defensive: extremely large amount confirmation in debug mode
+      if(t.amount >= 10000 && typeof window.debugLog === 'function') window.debugLog({ type:'cloudTx_large', t });
       state.transactions.push(t);
       save();
       renderHome();
