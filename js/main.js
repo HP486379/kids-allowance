@@ -13,8 +13,18 @@ import {
   listenChores
 } from "./firebase.js";
 
-// デバッグパネル（iPhone 等でコンソールが使えない場合に画面表示）
+// デバッグパネル（明示的に有効化した時のみ表示）
 (function createDebugPanel() {
+  let enabled = false;
+  try {
+    const qs = new URLSearchParams(location.search || "");
+    const qv = (qs.get("debug") || "").toLowerCase();
+    if (qv === "1" || qv === "true" || qv === "on") enabled = true;
+    const ls = (localStorage.getItem("kid-allowance:debug") || "").toLowerCase();
+    if (ls === "1" || ls === "true" || ls === "on") enabled = true;
+  } catch {}
+
+  if (!enabled) { window.debugLog = function () {}; return; }
   if (document.getElementById("syncDebug")) return;
   const d = document.createElement("div");
   d.id = "syncDebug";
@@ -41,7 +51,6 @@ import {
       const el = document.getElementById("syncDebug");
       const time = new Date().toLocaleTimeString();
       const text = typeof msg === "string" ? msg : JSON.stringify(msg);
-      // テンプレートリテラルを使わず文字列連結にして '$' エラーを回避
       el.innerText = el.innerText + "\n[" + time + "] " + text;
       el.scrollTop = el.scrollHeight;
     } catch (e) { /* ignore */ }
