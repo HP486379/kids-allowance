@@ -53,8 +53,9 @@ function seed(){
   }
 function computeBalance(){
     return state.transactions.reduce((sum, t)=>{
-      if(t.type==='income' || t.type==='chore') return sum + t.amount;
-      if(t.type==='expense' || t.type==='goal') return sum - t.amount;
+      const amt = sanitizeAmount((t && t.amount)!=null ? t.amount : 0);
+      if(t.type==='income' || t.type==='chore') return sum + amt;
+      if(t.type==='expense' || t.type==='goal') return sum - amt;
       return sum;
     }, 0);
   }
@@ -104,7 +105,9 @@ function computeBalance(){
       META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
       state = st; renderAll();
     }catch{}
-  }// ----- Rendering -----
+  // small duplicate guard for very fast double taps
+  let _lastTx = { sig:'', at:0 };
+// ----- Rendering -----
   function renderAll(){
     applyTheme();
     renderHeader();
@@ -335,6 +338,7 @@ function renderGoals(){
       addTx('income', amount, `もどす: ${goal.name}`);
       save();
       renderGoals();
+      try{ renderSavings(); }catch{}
       renderSavings();
       renderHome();
       renderTransactions();
@@ -487,7 +491,12 @@ function renderSettings(){
   })();
 }// ----- Actions -----
   function addTx(type, amount, note, animateCoin=false){
-    const t = { id:id(), type, amount:sanitizeAmount(amount), note, dateISO:new Date().toISOString() };
+    const amt = sanitizeAmount(amount);
+    const sig = `${type}:${amt}:${note||''}`;
+    const now = Date.now();
+    if(_lastTx.sig === sig && (now - _lastTx.at) < 800){ return; }
+    _lastTx = { sig, at: now };
+    const t = { id:id(), type, amount:amt, note, dateISO:new Date().toISOString() };
     state.transactions.push(t);
     save();
     try{ if(window.kidsAllowanceAddTx) window.kidsAllowanceAddTx(t); }catch{}
@@ -510,6 +519,7 @@ function contributeToGoal(goal){
     addTx('goal', amount, `ちょきん: ${goal.name}`);
     save();
     renderGoals();
+    try{ renderSavings(); }catch{}
     if(goal.saved >= goal.target){
       confetti();
       toast('おめでとう！ もくひょう たっせい！');
@@ -523,12 +533,14 @@ function editGoal(goal){
     goal.target = target;
     save();
     renderGoals();
+    try{ renderSavings(); }catch{}
   }
 function deleteGoal(goal){
     if(!confirm('もくひょうをけしますか？')) return;
     state.goals = state.goals.filter(g=>g.id!==goal.id);
     save();
     renderGoals();
+    try{ renderSavings(); }catch{}
   }
 
   // ----- Effects -----
