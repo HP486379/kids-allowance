@@ -198,6 +198,7 @@ body.modal-open::after{ content:""; position:fixed; inset:0; background:#0006; z
 
 /* Confetti */
 .confetti{ position:fixed; inset:0; pointer-events:none; overflow:hidden; }
+.syncDebug, #syncDebug{ pointer-events:none; }
 .confetti .p{ position:absolute; width:8px; height:14px; opacity:.9; animation: fall 1200ms ease-out forwards; }
 @keyframes fall{ from{ transform: translateY(-20vh) rotate(0) } to{ transform: translateY(100vh) rotate(540deg) } }
 

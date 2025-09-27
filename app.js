@@ -119,6 +119,15 @@ function computeBalance(){
     renderChores();
     renderSettings();
   }
+
+  // Safety: on boot, ensure no leftover modal overlay blocks clicks
+  try{
+    document.addEventListener('DOMContentLoaded', () => {
+      try{ document.body.classList.remove('modal-open'); }catch{}
+      try{ document.querySelectorAll('dialog').forEach(d=>{ try{ d.close(); }catch{} d.classList.remove('open'); }); }catch{}
+      try{ const dbg=document.getElementById('syncDebug'); if(dbg){ dbg.style.pointerEvents='none'; } }catch{}
+    });
+  }catch{}
 function renderHeader(){
     $('#avatarButton').textContent = state.avatar;
     $('#childName').value = state.childName || '';
