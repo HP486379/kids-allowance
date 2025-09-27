@@ -42,6 +42,7 @@
         <button class="tab active" data-tab="home" role="tab" aria-selected="true">ホーム</button>
         <button class="tab" data-tab="transactions" role="tab">おこづかい</button>
         <button class="tab" data-tab="goals" role="tab">もくひょう</button>
+        <button class="tab" data-tab="savings" role="tab">ちょきん</button>
         <button class="tab" data-tab="chores" role="tab">おてつだい</button>
         <button class="tab" data-tab="settings" role="tab">せってい</button>
       </nav>
@@ -137,6 +138,14 @@
               </menu>
             </form>
           </dialog>
+        </section>
+
+        <section id="view-savings" class="view" aria-labelledby="tab-savings">
+          <div class="card">
+            <div class="card-title">ちょきん</div>
+            <div id="savingsSummary" class="meta" style="margin-bottom:8px"></div>
+            <ul id="savingsList" class="list"></ul>
+          </div>
         </section>
 
         <section id="view-chores" class="view" aria-labelledby="tab-chores">
