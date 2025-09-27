@@ -1,19 +1,3 @@
-﻿import {
-  saveSummary,
-  saveProfile,
-  listenProfile,
-  updateBalance,
-  listenBalance,
-  addTransaction,
-  listenTransactions,
-  loadAllTransactions,
-  saveGoals,
-  saveChores,
-  listenGoals,
-  listenChores
-} from "./firebase.js";
-
-// 繝・ヰ繝・げ繝代ロ繝ｫ・・Phone 遲峨〒繧ｳ繝ｳ繧ｽ繝ｼ繝ｫ縺御ｽｿ縺医↑縺・ｴ蜷医↓逕ｻ髱｢陦ｨ遉ｺ・・
 (function createDebugPanel(){ window.debugLog = function(){}; return; })();;
 
 // ====== Firebase 蛻晄悄蛹・======
