@@ -105,6 +105,7 @@ function computeBalance(){
       META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
       state = st; renderAll();
     }catch{}
+    }
   // small duplicate guard for very fast double taps
   let _lastTx = { sig:'', at:0 };
 // ----- Rendering -----
