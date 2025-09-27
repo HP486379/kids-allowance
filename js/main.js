@@ -1,4 +1,4 @@
-import {
+﻿import {
   saveSummary,
   saveProfile,
   listenProfile,
@@ -13,42 +13,10 @@ import {
   listenChores
 } from "./firebase.js";
 
-// デバッグパネル（iPhone 等でコンソールが使えない場合に画面表示）
-(function createDebugPanel() {
-  if (document.getElementById("syncDebug")) return;
-  const d = document.createElement("div");
-  d.id = "syncDebug";
-  d.style.position = "fixed";
-  d.style.right = "12px";
-  d.style.bottom = "12px";
-  d.style.width = "320px";
-  d.style.maxHeight = "40vh";
-  d.style.overflow = "auto";
-  d.style.background = "rgba(0,0,0,0.7)";
-  d.style.color = "#fff";
-  d.style.fontSize = "12px";
-  d.style.lineHeight = "1.2";
-  d.style.padding = "8px";
-  d.style.borderRadius = "8px";
-  d.style.zIndex = 99999;
-  d.style.whiteSpace = "pre-wrap";
-  d.innerText = "sync debug:\n";
-  document.addEventListener("DOMContentLoaded", () => {
-    try { document.body.appendChild(d); } catch (e) {}
-  });
-  window.debugLog = function (msg) {
-    try {
-      const el = document.getElementById("syncDebug");
-      const time = new Date().toLocaleTimeString();
-      const text = typeof msg === "string" ? msg : JSON.stringify(msg);
-      // テンプレートリテラルを使わず文字列連結にして '$' エラーを回避
-      el.innerText = el.innerText + "\n[" + time + "] " + text;
-      el.scrollTop = el.scrollHeight;
-    } catch (e) { /* ignore */ }
-  };
-})();
+// 繝・ヰ繝・げ繝代ロ繝ｫ・・Phone 遲峨〒繧ｳ繝ｳ繧ｽ繝ｼ繝ｫ縺御ｽｿ縺医↑縺・ｴ蜷医↓逕ｻ髱｢陦ｨ遉ｺ・・
+(function createDebugPanel(){ window.debugLog = function(){}; return; })();;
 
-// ====== Firebase 初期化 ======
+// ====== Firebase 蛻晄悄蛹・======
 window.addEventListener("DOMContentLoaded", () => {
   try {
     listenProfile((p) => {
@@ -79,26 +47,26 @@ window.addEventListener("DOMContentLoaded", () => {
     listenBalance((bal) => {
       if (bal == null) return;
       const el = document.getElementById("balance");
-      if (el) el.textContent = "¥" + Number(bal).toLocaleString("ja-JP");
+      if (el) el.textContent = "ﾂ･" + Number(bal).toLocaleString("ja-JP");
     });
   } catch (e) {
     console.warn("listenBalance failed", e);
     if (typeof window.debugLog === "function") window.debugLog({ type: "listenBalance_failed", e: String(e) });
   }
 
-  // ====== Firebase 全取引・目標・お手伝い同期 ======
+  // ====== Firebase 蜈ｨ蜿門ｼ輔・逶ｮ讓吶・縺頑焔莨昴＞蜷梧悄 ======
   try {
     listenGoals((arr) => {
       try {
         if (typeof window.debugLog === "function") window.debugLog({ type: "listenGoals", data: arr });
 
-        // 受信データを localStorage に保存（遅延ハンドラ対策）
+        // 蜿嶺ｿ｡繝・・繧ｿ繧・localStorage 縺ｫ菫晏ｭ假ｼ磯≦蟒ｶ繝上Φ繝峨Λ蟇ｾ遲厄ｼ・
         try { localStorage.setItem("kids-allowance:goals", JSON.stringify(arr || [])); } catch (e) {}
 
-        // カスタムイベントを dispatch（app.js 等で監視できるように）
+        // 繧ｫ繧ｹ繧ｿ繝繧､繝吶Φ繝医ｒ dispatch・・pp.js 遲峨〒逶｣隕悶〒縺阪ｋ繧医≧縺ｫ・・
         try { window.dispatchEvent(new CustomEvent("goalsUpdated", { detail: arr || [] })); } catch (e) {}
 
-        // 既存の UI 更新フックがあれば呼ぶ
+        // 譌｢蟄倥・ UI 譖ｴ譁ｰ繝輔ャ繧ｯ縺後≠繧後・蜻ｼ縺ｶ
         if (typeof window.kidsAllowanceApplyGoals === "function") {
           try { window.kidsAllowanceApplyGoals(arr || []); } catch (e) { console.warn("applyGoals hook error", e); }
         }
@@ -142,7 +110,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// ====== app.js から呼ばれるフック ======
+// ====== app.js 縺九ｉ蜻ｼ縺ｰ繧後ｋ繝輔ャ繧ｯ ======
 let syncTimer = null;
 window.kidsAllowanceSync = function syncToFirebase(state) {
   if (syncTimer) clearTimeout(syncTimer);
@@ -154,7 +122,7 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
         return sum;
       }, 0);
 
-      // goals を配列に正規化（オブジェクトや null にも対応）
+      // goals 繧帝・蛻励↓豁｣隕丞喧・医が繝悶ず繧ｧ繧ｯ繝医ｄ null 縺ｫ繧ょｯｾ蠢懶ｼ・
       const goals = Array.isArray(state.goals)
         ? state.goals
         : state.goals
@@ -163,11 +131,11 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
 
       const summary = { balance, goals };
 
-      // デバッグ: 保存前に表示
+      // 繝・ヰ繝・げ: 菫晏ｭ伜燕縺ｫ陦ｨ遉ｺ
       if (typeof window.debugLog === "function") window.debugLog({ type: "sync_saving_goals", goals });
       console.debug("Sync -> saving goals:", goals);
 
-      // users/{uid}/goals に保存（listenGoals が反応するノード）
+      // users/{uid}/goals 縺ｫ菫晏ｭ假ｼ・istenGoals 縺悟渚蠢懊☆繧九ヮ繝ｼ繝会ｼ・
       try {
         await saveGoals(goals);
         console.debug("saveGoals -> saved");
@@ -177,7 +145,7 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
         if (typeof window.debugLog === "function") window.debugLog({ type: "saveGoals_failed", e: String(e) });
       }
 
-      // 従来通り summaries ノードにも保存
+      // 蠕捺擂騾壹ｊ summaries 繝弱・繝峨↓繧ゆｿ晏ｭ・
       try {
         await saveSummary(summary);
         console.debug("saveSummary -> saved", summary);
@@ -187,22 +155,22 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
         if (typeof window.debugLog === "function") window.debugLog({ type: "saveSummary_failed", e: String(e) });
       }
 
-      try { if (window.toast) window.toast("Firebaseへ同期完了"); } catch {}
-      console.log("Firebaseへ同期完了", summary);
+      try { if (window.toast) window.toast("Firebase縺ｸ蜷梧悄螳御ｺ・); } catch {}
+      console.log("Firebase縺ｸ蜷梧悄螳御ｺ・, summary);
     } catch (e) {
-      console.warn("Firebase同期に失敗", e);
+      console.warn("Firebase蜷梧悄縺ｫ螟ｱ謨・, e);
       if (typeof window.debugLog === "function") window.debugLog({ type: "sync_failed", e: String(e) });
-      try { if (window.toast) window.toast("Firebase同期に失敗しました"); } catch {}
+      try { if (window.toast) window.toast("Firebase蜷梧悄縺ｫ螟ｱ謨励＠縺ｾ縺励◆"); } catch {}
     }
   }, 500);
 };
 
-// data.json は使わないモード
+// data.json 縺ｯ菴ｿ繧上↑縺・Δ繝ｼ繝・
 window.addEventListener("load", () => {
   console.log("Firebase mode: data.json fetch is disabled");
 });
 
-// ====== プロフィール保存 ======
+// ====== 繝励Ο繝輔ぅ繝ｼ繝ｫ菫晏ｭ・======
 let profTimer = null;
 window.kidsAllowanceSaveProfile = function (state) {
   if (profTimer) clearTimeout(profTimer);
@@ -220,7 +188,7 @@ window.kidsAllowanceSaveProfile = function (state) {
   }, 300);
 };
 
-// ====== 取引保存 ======
+// ====== 蜿門ｼ穂ｿ晏ｭ・======
 window.kidsAllowanceAddTx = async function (t) {
   try {
     const mapped = {
@@ -236,7 +204,7 @@ window.kidsAllowanceAddTx = async function (t) {
   }
 };
 
-// ====== 残高更新 ======
+// ====== 谿矩ｫ俶峩譁ｰ ======
 let balTimer = null;
 window.kidsAllowanceUpdateBalance = function (state) {
   if (balTimer) clearTimeout(balTimer);
@@ -254,3 +222,4 @@ window.kidsAllowanceUpdateBalance = function (state) {
     }
   }, 200);
 };
+
