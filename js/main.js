@@ -124,45 +124,35 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
 
       // goals 繧帝・蛻励↓豁｣隕丞喧・医が繝悶ず繧ｧ繧ｯ繝医ｄ null 縺ｫ繧ょｯｾ蠢懶ｼ・
       const goals = Array.isArray(state.goals)
-        ? state.goals
-        : state.goals
-        ? Object.values(state.goals)
-        : [];
+? state.goals
+: state.goals
+? Object.values(state.goals)
+: [];
 
-      const summary = { balance, goals };
+const summary = { balance, goals };
 
-      // 繝・ヰ繝・げ: 菫晏ｭ伜燕縺ｫ陦ｨ遉ｺ
-      if (typeof window.debugLog === "function") window.debugLog({ type: "sync_saving_goals", goals });
-      console.debug("Sync -> saving goals:", goals);
+try {
+await saveGoals(goals);
+} catch (e) {
+console.warn("saveGoals failed", e);
+}
 
-      // users/{uid}/goals 縺ｫ菫晏ｭ假ｼ・istenGoals 縺悟渚蠢懊☆繧九ヮ繝ｼ繝会ｼ・
-      try {
-        await saveGoals(goals);
-        console.debug("saveGoals -> saved");
-        if (typeof window.debugLog === "function") window.debugLog("saveGoals -> saved");
-      } catch (e) {
-        console.warn("saveGoals failed", e);
-        if (typeof window.debugLog === "function") window.debugLog({ type: "saveGoals_failed", e: String(e) });
-      }
+try {
+await saveSummary(summary);
+if (typeof window.debugLog === "function") window.debugLog({ type: "saveSummary_saved", summary });
+} catch (e) {
+console.warn("saveSummary failed", e);
+if (typeof window.debugLog === "function") window.debugLog({ type: "saveSummary_failed", e: String(e) });
+}
 
-      // 蠕捺擂騾壹ｊ summaries 繝弱・繝峨↓繧ゆｿ晏ｭ・
-      try {
-        await saveSummary(summary);
-        console.debug("saveSummary -> saved", summary);
-        if (typeof window.debugLog === "function") window.debugLog({ type: "saveSummary_saved", summary });
-      } catch (e) {
-        console.warn("saveSummary failed", e);
-        if (typeof window.debugLog === "function") window.debugLog({ type: "saveSummary_failed", e: String(e) });
-      }
-
-      try { if (window.toast) window.toast("Firebase縺ｸ蜷梧悄螳御ｺ・); } catch {}
-      console.log("Firebase縺ｸ蜷梧悄螳御ｺ・, summary);
-    } catch (e) {
-      console.warn("Firebase蜷梧悄縺ｫ螟ｱ謨・, e);
-      if (typeof window.debugLog === "function") window.debugLog({ type: "sync_failed", e: String(e) });
-      try { if (window.toast) window.toast("Firebase蜷梧悄縺ｫ螟ｱ謨励＠縺ｾ縺励◆"); } catch {}
-    }
-  }, 500);
+try { if (window.toast) window.toast("Firebase sync OK"); } catch () {}
+console.log("Firebase sync OK", summary);
+} catch (e) {
+console.warn("Firebase sync failed", e);
+if (typeof window.debugLog === "function") window.debugLog({ type: "sync_failed", e: String(e) });
+try { if (window.toast) window.toast("Firebase sync failed"); } catch () {}
+}
+}, 500);
 };
 
 // data.json 縺ｯ菴ｿ繧上↑縺・Δ繝ｼ繝・
