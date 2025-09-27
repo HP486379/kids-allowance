@@ -155,10 +155,10 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
         if (typeof window.debugLog === "function") window.debugLog({ type: "saveSummary_failed", e: String(e) });
       }
 
-      try { if (window.toast) window.toast("Firebase縺ｸ蜷梧悄螳御ｺ・); } catch {}
-      console.log("Firebase縺ｸ蜷梧悄螳御ｺ・, summary);
+      158: try { if (window.toast) window.toast("Firebaseへ同期完了"); } catch {}
+       console.log("Firebaseへ同期完了", summary);
     } catch (e) {
-      console.warn("Firebase蜷梧悄縺ｫ螟ｱ謨・, e);
+      console.warn("Firebase同期に失敗", e);
       if (typeof window.debugLog === "function") window.debugLog({ type: "sync_failed", e: String(e) });
       try { if (window.toast) window.toast("Firebase蜷梧悄縺ｫ螟ｱ謨励＠縺ｾ縺励◆"); } catch {}
     }
