@@ -53,8 +53,9 @@ function seed(){
   }
 function computeBalance(){
     return state.transactions.reduce((sum, t)=>{
-      if(t.type==='income' || t.type==='chore') return sum + t.amount;
-      if(t.type==='expense' || t.type==='goal') return sum - t.amount;
+      const amt = sanitizeAmount((t && t.amount)!=null ? t.amount : 0);
+      if(t.type==='income' || t.type==='chore') return sum + amt;
+      if(t.type==='expense' || t.type==='goal') return sum - amt;
       return sum;
     }, 0);
   }
@@ -104,7 +105,9 @@ function computeBalance(){
       META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
       state = st; renderAll();
     }catch{}
-  }// ----- Rendering -----
+  // small duplicate guard for very fast double taps
+  let _lastTx = { sig:'', at:0 };
+// ----- Rendering -----
   function renderAll(){
     applyTheme();
     renderHeader();
@@ -112,9 +115,19 @@ function computeBalance(){
     renderHome();
     renderTransactions();
     renderGoals();
+    renderSavings();
     renderChores();
     renderSettings();
   }
+
+  // Safety: on boot, ensure no leftover modal overlay blocks clicks
+  try{
+    document.addEventListener('DOMContentLoaded', () => {
+      try{ document.body.classList.remove('modal-open'); }catch{}
+      try{ document.querySelectorAll('dialog').forEach(d=>{ try{ d.close(); }catch{} d.classList.remove('open'); }); }catch{}
+      try{ const dbg=document.getElementById('syncDebug'); if(dbg){ dbg.style.pointerEvents='none'; } }catch{}
+    });
+  }catch{}
 function renderHeader(){
     $('#avatarButton').textContent = state.avatar;
     $('#childName').value = state.childName || '';
@@ -182,6 +195,7 @@ function renderHome(){
       const amount = parseAmount($('#quickAmount').value);
       const note = $('#quickNote').value.trim();
       if(!validAmount(amount)) return toast('金額を正しく入れてね');
+      if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
       addTx(type, amount, note || labelForType(type), true);
       $('#quickAmount').value = '';
       $('#quickNote').value = '';
@@ -218,6 +232,7 @@ function renderTransactions(){
       const amount = parseAmount($('#txAmount').value);
       const note = $('#txNote').value.trim();
       if(!validAmount(amount)) return toast('金額を正しく入れてね');
+      if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
       addTx(type, amount, note || labelForType(type), true);
       closeModal($('#txDialog'));
       e.target.reset();
@@ -281,6 +296,62 @@ function renderGoals(){
       e.target.reset();
       renderGoals();
     };
+  }
+  // ===== Savings (ちょきん確認・戻す) =====
+  function renderSavings(){
+    const wrap = document.getElementById('savingsList');
+    const sumEl = document.getElementById('savingsSummary');
+    if(!wrap || !sumEl) return;
+    wrap.innerHTML = '';
+    const total = (state.goals||[]).reduce((s,g)=> s + Math.max(0, Math.round(Number(g.saved)||0)), 0);
+    sumEl.textContent = `合計: ${money(total)}`;
+    const goals = (state.goals||[]).filter(g => (Math.round(Number(g.saved)||0)) > 0);
+    if(goals.length===0){
+      const li = document.createElement('li');
+      li.textContent = 'まだ ちょきん はないよ';
+      wrap.appendChild(li);
+      return;
+    }
+    goals.forEach(g => {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <div>
+          <div class="note">${escapeHtml(g.name)}</div>
+          <div class="meta">いまの ちょきん: ${money(Math.round(Number(g.saved)||0))}</div>
+        </div>
+        <div class="goal-actions">
+          <button class="btn" data-act="part">すこし もどす</button>
+          <button class="btn danger" data-act="all">ぜんぶ もどす</button>
+        </div>
+      `;
+      wrap.appendChild(li);
+      const [partBtn, allBtn] = li.querySelectorAll('button');
+      partBtn.onclick = ()=> withdrawFromGoal(g, false);
+      allBtn.onclick = ()=> withdrawFromGoal(g, true);
+    });
+  }
+  function withdrawFromGoal(goal, all=false){
+    try{
+      const cur = Math.max(0, Math.round(Number(goal.saved)||0));
+      if(cur<=0) return toast('この もくひょう に ちょきん はないよ');
+      let amount = cur;
+      if(!all){
+        const val = prompt(`いくら もどす？（最大 ${money(cur)}）`, Math.min(300, cur).toString());
+        amount = parseAmount(val||'');
+        if(!validAmount(amount)) return;
+        if(amount > cur) return toast('ちょきん より おおいよ');
+        if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
+      }
+      amount = sanitizeAmount(amount);
+      goal.saved = sanitizeAmount(cur - amount);
+      addTx('income', amount, `もどす: ${goal.name}`);
+      save();
+      renderGoals();
+      try{ renderSavings(); }catch{}
+      renderSavings();
+      renderHome();
+      renderTransactions();
+    }catch{}
   }
 function renderChores(){
     const ul = document.getElementById('choreList');
@@ -429,7 +500,12 @@ function renderSettings(){
   })();
 }// ----- Actions -----
   function addTx(type, amount, note, animateCoin=false){
-    const t = { id:id(), type, amount:Math.round(amount), note, dateISO:new Date().toISOString() };
+    const amt = sanitizeAmount(amount);
+    const sig = `${type}:${amt}:${note||''}`;
+    const now = Date.now();
+    if(_lastTx.sig === sig && (now - _lastTx.at) < 800){ return; }
+    _lastTx = { sig, at: now };
+    const t = { id:id(), type, amount:amt, note, dateISO:new Date().toISOString() };
     state.transactions.push(t);
     save();
     try{ if(window.kidsAllowanceAddTx) window.kidsAllowanceAddTx(t); }catch{}
@@ -446,11 +522,13 @@ function contributeToGoal(goal){
     const val = prompt(`いくらちょきんする？（最大 ${money(max)}）`, Math.min(300, max).toString());
     const amount = parseAmount(val||'');
     if(!validAmount(amount)) return;
-    if(amount>max) return toast('ざんだかよりおおいよ');
+    if(amount > max) return toast('ざんだかよりおおいよ');
+    if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
     goal.saved += amount;
     addTx('goal', amount, `ちょきん: ${goal.name}`);
     save();
     renderGoals();
+    try{ renderSavings(); }catch{}
     if(goal.saved >= goal.target){
       confetti();
       toast('おめでとう！ もくひょう たっせい！');
@@ -464,12 +542,14 @@ function editGoal(goal){
     goal.target = target;
     save();
     renderGoals();
+    try{ renderSavings(); }catch{}
   }
 function deleteGoal(goal){
     if(!confirm('もくひょうをけしますか？')) return;
     state.goals = state.goals.filter(g=>g.id!==goal.id);
     save();
     renderGoals();
+    try{ renderSavings(); }catch{}
   }
 
   // ----- Effects -----
@@ -534,11 +614,25 @@ function dateJa(iso){
 function labelForType(type){
     return type==='income' ? 'おこづかい' : type==='expense' ? 'おかいもの' : type==='goal' ? 'ちょきん' : 'おてつだい';
   }
+// 入力金額の安全なパース（小数や全角・通貨記号を考慮）
+function toHalfWidthDigits(s){
+    return String(s||'').replace(/[０-９]/g, c=> String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+}
 function parseAmount(v){
-    if(typeof v !== 'string') return 0;
-    v = v.replace(/[^0-9]/g,'');
-    return v ? parseInt(v,10) : 0;
-  }
+    v = toHalfWidthDigits(v);
+    if(typeof v !== 'string') v = String(v||'');
+    v = v.trim().replace(/[¥￥$,\s]/g,''); // 通貨・カンマ・空白を除去
+    // 小数セパレータが含まれる場合は整数部のみ採用（100.50 -> 100）
+    const intPart = v.split(/[\.｡､，．]/)[0].replace(/[^0-9]/g,'');
+    const n = intPart ? parseInt(intPart,10) : 0;
+    return Number.isFinite(n) ? n : 0;
+}
+function sanitizeAmount(n){
+    n = Math.round(Number(n)||0);
+    if(n < 0) n = 0;
+    if(n > 1_000_000) n = 1_000_000;
+    return n;
+}
 function validAmount(n){ return Number.isFinite(n) && n>0 && n<=1_000_000 }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])) }
 
@@ -655,20 +749,70 @@ function bindChoreControls(){
       const t = {
         id: id(),
         type: (tx.type === 'add' ? 'income' : 'expense'),
-        amount: Math.round(Number(tx.amount) || 0),
+        amount: sanitizeAmount(tx.amount),
         note: tx.label || '',
         dateISO: new Date(tx.timestamp || Date.now()).toISOString()
       };
-      // simple recent-duplicate guard
-      const recent = state.transactions.slice(-5);
-      const dup = recent.some(u => u.type===t.type && u.amount===t.amount && u.note===t.note && Math.abs(new Date(u.dateISO) - new Date(t.dateISO)) < 2000);
+      // robust duplicate guard: treat goal/expense as same "minus" kind
+      const isPlus = (tp) => tp==='income' || tp==='chore' || tp==='add';
+      const isMinus = (tp) => tp==='expense' || tp==='goal' || tp==='subtract';
+      const sameKind = (a,b) => (isPlus(a)&&isPlus(b)) || (isMinus(a)&&isMinus(b));
+      const recent = state.transactions.slice(-100);
+      const dup = recent.some(u => u && sameKind(u.type, t.type) && u.amount===t.amount && (u.note||'')===(t.note||'') && Math.abs(new Date(u.dateISO) - new Date(t.dateISO)) < 5*60*1000);
       if(dup) return;
+      // defensive: extremely large amount confirmation in debug mode
+      if(t.amount >= 10000 && typeof window.debugLog === 'function') window.debugLog({ type:'cloudTx_large', t });
       state.transactions.push(t);
       save();
       renderHome();
       renderTransactions();
     }catch{}
   };
+}catch{}
+
+// Remote goals -> apply to UI/state
+try{
+  window.kidsAllowanceApplyGoals = function(goals){
+    try{
+      const arr = Array.isArray(goals) ? goals.map(g => ({
+        id: g && g.id ? String(g.id) : id(),
+        name: (g && g.name) || '',
+        target: Math.round(Number(g && g.target) || 0),
+        saved: Math.round(Number(g && g.saved) || 0)
+      })) : [];
+      // Replace entire goals list
+      state.goals = arr;
+      // Persist locally and re-render; may trigger sync, which is fine
+      save();
+      renderGoals();
+    }catch(e){ console.warn('kidsAllowanceApplyGoals failed', e); }
+  };
+}catch{}
+
+// In case goals arrived before this handler existed, apply cached goals
+try{
+  (function applyCachedGoalsOnce(){
+    try{
+      const raw = localStorage.getItem('kids-allowance:goals');
+      if(raw){
+        const g = JSON.parse(raw);
+        if(Array.isArray(g) && typeof window.kidsAllowanceApplyGoals === 'function'){
+          window.kidsAllowanceApplyGoals(g);
+        }
+      }
+    }catch{}
+  })();
+}catch{}
+
+// Also reflect future events emitted before UI boots completely
+try{
+  window.addEventListener('goalsUpdated', (e)=>{
+    try{
+      if(typeof window.kidsAllowanceApplyGoals === 'function'){
+        window.kidsAllowanceApplyGoals((e && e.detail) ? e.detail : []);
+      }
+    }catch{}
+  });
 }catch{}
 
 // Inject Sync ID share/apply controls into Settings card
@@ -697,6 +841,30 @@ try{
         const st = loadProfileToActive(id) || initialState(); state = st; renderAll(); toast('同期IDを適用しました');
       }catch(e){ console.warn(e); }
     };
+
+    // Debug helpers (enable with ?debug=1)
+    try {
+      const u = new URLSearchParams(location.search||'');
+      if (u.get('debug') === '1') {
+        const dbgRow = document.createElement('div');
+        dbgRow.className = 'field-row';
+        const btn = document.createElement('button'); btn.className='btn'; btn.textContent='デバッグ: もくひょう反映';
+        btn.onclick = ()=>{
+          try{
+            const raw = localStorage.getItem('kids-allowance:goals');
+            const g = raw ? JSON.parse(raw) : [];
+            if(typeof window.kidsAllowanceApplyGoals === 'function'){
+              window.kidsAllowanceApplyGoals(Array.isArray(g)?g:[]);
+              toast('もくひょうを反映しました');
+            } else {
+              toast('applyGoals が未定義です');
+            }
+          }catch(e){ console.warn(e); toast('反映に失敗しました'); }
+        };
+        dbgRow.appendChild(btn);
+        card.appendChild(dbgRow);
+      }
+    } catch {}
   })();
 }catch{}
 })();
