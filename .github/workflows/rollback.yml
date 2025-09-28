@@ -46,16 +46,21 @@ jobs:
         run: |
           set -euo pipefail
           TAG='${{ inputs.tag }}'
-          TARGET='origin/${{ inputs.target_branch }}'
+          TARGET_BRANCH='${{ inputs.target_branch }}'
+          TARGET_REF="refs/heads/${TARGET_BRANCH}"
+          # 確実にタグ情報を取得
           git fetch --tags origin
+          # actions/checkout で対象ブランチは既にチェックアウト済み（ローカルに存在）
+          # 念のため最新にしておきたい場合は以下を有効化
+          # git pull --ff-only
           if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             echo "Tag $TAG not found" >&2
             exit 1
           fi
-          if git merge-base --is-ancestor "$TAG" "$TARGET"; then
+          if git merge-base --is-ancestor "$TAG" "$TARGET_REF"; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Tag $TAG is not an ancestor of $TARGET; cannot compute revert range safely." >&2
+            echo "Tag $TAG is not an ancestor of $TARGET_REF; cannot compute revert range safely." >&2
             exit 1
           fi
 
@@ -66,24 +71,24 @@ jobs:
           set -euo pipefail
           TAG='${{ inputs.tag }}'
           TARGET_BRANCH='${{ inputs.target_branch }}'
-          TARGET="origin/${TARGET_BRANCH}"
+          TARGET_REF="refs/heads/${TARGET_BRANCH}"
 
           TS=$(date -u +%Y%m%d-%H%M%S)
           BRANCH="rollback/${TARGET_BRANCH}-to-${TAG}-${TS}"
           # 事前にレンジの有無を判定（タグ==ターゲットならノーオペ）
           TAG_SHA=$(git rev-parse "$TAG^{commit}")
-          TARGET_SHA=$(git rev-parse "$TARGET^{commit}")
+          TARGET_SHA=$(git rev-parse "$TARGET_REF^{commit}")
           if [[ "$TAG_SHA" == "$TARGET_SHA" ]]; then
             echo "Tag equals target head (no changes)." >&2
             echo "noop=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          git checkout -b "$BRANCH" "$TARGET"
+          git checkout -b "$BRANCH" "$TARGET_BRANCH"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
           # Revert all commits after TAG up to TARGET
-          RANGE="$TAG..$TARGET"
+          RANGE="$TAG..$TARGET_BRANCH"
           echo "Reverting range: $RANGE"
           # 空レンジはノーオペ
           if [[ "$(git rev-list --count "$RANGE")" -eq 0 ]]; then
