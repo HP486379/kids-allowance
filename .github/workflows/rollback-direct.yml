@@ -1,0 +1,60 @@
+name: Rollback main to ref (direct)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Tag name or commit SHA to move main to
+        required: true
+        type: string
+      confirm:
+        description: Type "ROLLBACK" to confirm force update of main
+        required: true
+        type: string
+      reason:
+        description: Reason (optional, recorded in summary)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate inputs
+        id: v
+        shell: bash
+        run: |
+          set -euo pipefail
+          REF='${{ inputs.ref }}'
+          CONFIRM='${{ inputs.confirm }}'
+          if [[ "$CONFIRM" != "ROLLBACK" ]]; then
+            echo 'You must type ROLLBACK to confirm.' >&2
+            exit 1
+          fi
+          git fetch --tags origin
+          git fetch origin --prune '+refs/heads/*:refs/remotes/origin/*'
+          if ! SHA=$(git rev-parse -q --verify "$REF^{commit}"); then
+            echo "Invalid ref: $REF" >&2
+            exit 1
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Target SHA: $SHA" >> $GITHUB_STEP_SUMMARY
+          echo "Reason: ${{ inputs.reason }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Force update main
+        env:
+          SHA: ${{ steps.v.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin "$SHA:refs/heads/main" --force
+          echo "Moved main to $SHA" >> $GITHUB_STEP_SUMMARY
+
