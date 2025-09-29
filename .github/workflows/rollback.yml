@@ -47,20 +47,19 @@ jobs:
           set -euo pipefail
           TAG='${{ inputs.tag }}'
           TARGET_BRANCH='${{ inputs.target_branch }}'
-          TARGET_REF="refs/heads/${TARGET_BRANCH}"
-          # 確実にタグ情報を取得
+          # タグと対象ブランチの最新を取得
           git fetch --tags origin
-          # actions/checkout で対象ブランチは既にチェックアウト済み（ローカルに存在）
-          # 念のため最新にしておきたい場合は以下を有効化
-          # git pull --ff-only
+          git fetch origin "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}" --depth=0
           if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             echo "Tag $TAG not found" >&2
             exit 1
           fi
-          if git merge-base --is-ancestor "$TAG" "$TARGET_REF"; then
+          TARGET_SHA=$(git rev-parse "refs/remotes/origin/${TARGET_BRANCH}^{commit}")
+          echo "TARGET_SHA=$TARGET_SHA" >> "$GITHUB_OUTPUT"
+          if git merge-base --is-ancestor "$TAG" "$TARGET_SHA"; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Tag $TAG is not an ancestor of $TARGET_REF; cannot compute revert range safely." >&2
+            echo "Tag $TAG is not an ancestor of $TARGET_BRANCH ($TARGET_SHA); cannot compute revert range safely." >&2
             exit 1
           fi
 
@@ -71,24 +70,25 @@ jobs:
           set -euo pipefail
           TAG='${{ inputs.tag }}'
           TARGET_BRANCH='${{ inputs.target_branch }}'
-          TARGET_REF="refs/heads/${TARGET_BRANCH}"
+          git fetch --tags origin
+          git fetch origin "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}" --depth=0
 
           TS=$(date -u +%Y%m%d-%H%M%S)
           BRANCH="rollback/${TARGET_BRANCH}-to-${TAG}-${TS}"
           # 事前にレンジの有無を判定（タグ==ターゲットならノーオペ）
           TAG_SHA=$(git rev-parse "$TAG^{commit}")
-          TARGET_SHA=$(git rev-parse "$TARGET_REF^{commit}")
+          TARGET_SHA=$(git rev-parse "refs/remotes/origin/${TARGET_BRANCH}^{commit}")
           if [[ "$TAG_SHA" == "$TARGET_SHA" ]]; then
             echo "Tag equals target head (no changes)." >&2
             echo "noop=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          git checkout -b "$BRANCH" "$TARGET_BRANCH"
+          git checkout -b "$BRANCH" "$TARGET_SHA"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
           # Revert all commits after TAG up to TARGET
-          RANGE="$TAG..$TARGET_BRANCH"
+          RANGE="$TAG_SHA..$TARGET_SHA"
           echo "Reverting range: $RANGE"
           # 空レンジはノーオペ
           if [[ "$(git rev-list --count "$RANGE")" -eq 0 ]]; then
