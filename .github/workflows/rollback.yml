@@ -40,6 +40,23 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      - name: Print environment and refs (debug)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Git version: $(git --version)"
+          echo "Inputs: tag='${{ inputs.tag }}' target_branch='${{ inputs.target_branch }}'"
+          echo "Remotes:"; git remote -v || true
+          echo "Show refs (heads/tags, last 50):"
+          git show-ref --tags | tail -n 20 || true
+          git show-ref --heads | tail -n 30 || true
+          echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
+          echo "HEAD SHA: $(git rev-parse HEAD)"
+          echo "---" >> "$GITHUB_STEP_SUMMARY"
+          echo "Inputs" >> "$GITHUB_STEP_SUMMARY"
+          echo "- tag: ${{ inputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- target_branch: ${{ inputs.target_branch }}" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Validate tag and ancestry
         id: validate
         shell: bash
@@ -52,14 +69,22 @@ jobs:
           git fetch origin "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}" --depth=0
           if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             echo "Tag $TAG not found" >&2
+            echo "Tag $TAG not found" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
           TARGET_SHA=$(git rev-parse "refs/remotes/origin/${TARGET_BRANCH}^{commit}")
+          TAG_SHA=$(git rev-parse "$TAG^{commit}")
           echo "TARGET_SHA=$TARGET_SHA" >> "$GITHUB_OUTPUT"
-          if git merge-base --is-ancestor "$TAG" "$TARGET_SHA"; then
+          echo "TAG_SHA=$TAG_SHA" >> "$GITHUB_OUTPUT"
+          echo "Resolved: TAG=$TAG -> $TAG_SHA"; echo "Resolved: ${TARGET_BRANCH} -> $TARGET_SHA"
+          echo "Resolved" >> "$GITHUB_STEP_SUMMARY"
+          echo "- TAG=$TAG -> $TAG_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "- ${TARGET_BRANCH} -> $TARGET_SHA" >> "$GITHUB_STEP_SUMMARY"
+          if git merge-base --is-ancestor "$TAG_SHA" "$TARGET_SHA"; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
             echo "Tag $TAG is not an ancestor of $TARGET_BRANCH ($TARGET_SHA); cannot compute revert range safely." >&2
+            echo "Not ancestor: $TAG_SHA !<= $TARGET_SHA" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
@@ -78,9 +103,11 @@ jobs:
           # 事前にレンジの有無を判定（タグ==ターゲットならノーオペ）
           TAG_SHA=$(git rev-parse "$TAG^{commit}")
           TARGET_SHA=$(git rev-parse "refs/remotes/origin/${TARGET_BRANCH}^{commit}")
+          echo "Working with BRANCH=$BRANCH TAG_SHA=$TAG_SHA TARGET_SHA=$TARGET_SHA"
           if [[ "$TAG_SHA" == "$TARGET_SHA" ]]; then
             echo "Tag equals target head (no changes)." >&2
             echo "noop=true" >> "$GITHUB_OUTPUT"
+            echo "No-op: same commit $TAG_SHA" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
@@ -90,10 +117,12 @@ jobs:
           # Revert all commits after TAG up to TARGET
           RANGE="$TAG_SHA..$TARGET_SHA"
           echo "Reverting range: $RANGE"
+          echo "Range: $RANGE" >> "$GITHUB_STEP_SUMMARY"
           # 空レンジはノーオペ
           if [[ "$(git rev-list --count "$RANGE")" -eq 0 ]]; then
             echo "No commits in range (no changes)." >&2
             echo "noop=true" >> "$GITHUB_OUTPUT"
+            echo "No-op: empty range" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           set +e
@@ -104,12 +133,14 @@ jobs:
           if [[ $REVERT_STATUS -ne 0 ]]; then
             echo "Revert encountered conflicts. Aborting to avoid partial rollback." >&2
             git revert --abort || true
+            echo "Conflicts during revert $RANGE" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
           if git diff --quiet; then
             echo "No changes to commit (already at $TAG)." >&2
             echo "noop=true" >> "$GITHUB_OUTPUT"
+            echo "No-op: diff is clean" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
