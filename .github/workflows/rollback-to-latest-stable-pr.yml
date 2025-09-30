@@ -1,0 +1,181 @@
+name: Rollback to Latest Stable via PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: Branch to rollback
+        default: main
+        required: true
+      auto_merge:
+        description: Try to merge PR automatically
+        type: boolean
+        default: false
+      pr_title:
+        description: Custom PR title (optional)
+        required: false
+      pr_body:
+        description: Custom PR body (optional)
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare-rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.target_branch }}
+
+      - name: Configure Git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Resolve latest stable tag
+        id: stable
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --tags origin
+          # Most recently created stable-* tag
+          LATEST=$(git for-each-ref 'refs/tags/stable-*' --sort=-creatordate --format '%(refname:short)' | head -n1 || true)
+          if [[ -z "$LATEST" ]]; then
+            echo 'No stable-* tags found.' >&2
+            exit 1
+          fi
+          SHA=$(git rev-parse "$LATEST^{commit}")
+          echo "tag=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Latest stable: $LATEST ($SHA)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate ancestry
+        id: validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET_BRANCH='${{ inputs.target_branch }}'
+          git fetch origin "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}" --depth=0
+          TARGET_SHA=$(git rev-parse "refs/remotes/origin/${TARGET_BRANCH}^{commit}")
+          TAG_SHA='${{ steps.stable.outputs.sha }}'
+          echo "TARGET_SHA=$TARGET_SHA" >> "$GITHUB_OUTPUT"
+          if git merge-base --is-ancestor "$TAG_SHA" "$TARGET_SHA"; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Latest stable ($TAG_SHA) is not an ancestor of $TARGET_BRANCH ($TARGET_SHA)." >&2
+            exit 1
+          fi
+          echo "Target: $TARGET_BRANCH ($TARGET_SHA)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create rollback branch and revert range
+        id: revert
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG='${{ steps.stable.outputs.tag }}'
+          TAG_SHA='${{ steps.stable.outputs.sha }}'
+          TARGET_BRANCH='${{ inputs.target_branch }}'
+          TARGET_SHA='${{ steps.validate.outputs.TARGET_SHA }}'
+          TS=$(date -u +%Y%m%d-%H%M%S)
+          BRANCH="rollback/${TARGET_BRANCH}-to-${TAG}-${TS}"
+
+          if [[ "$TAG_SHA" == "$TARGET_SHA" ]]; then
+            echo "No-op: target already at latest stable." >&2
+            echo "noop=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git checkout -b "$BRANCH" "$TARGET_SHA"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+          RANGE="$TAG_SHA..$TARGET_SHA"
+          echo "Reverting range: $RANGE" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [[ "$(git rev-list --count "$RANGE")" -eq 0 ]]; then
+            echo "No-op: empty range." >&2
+            echo "noop=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          set +e
+          git revert --no-edit --no-commit $RANGE
+          REVERT_STATUS=$?
+          set -e
+          if [[ $REVERT_STATUS -ne 0 ]]; then
+            echo "Conflicts during revert. Aborting." >&2
+            git revert --abort || true
+            exit 1
+          fi
+
+          git commit -m "chore(rollback): Revert ${TARGET_BRANCH} to ${TAG}"
+          git push --set-upstream origin "$BRANCH"
+          echo "noop=false" >> "$GITHUB_OUTPUT"
+
+      - name: Create Pull Request
+        id: pr
+        if: steps.revert.outputs.noop == 'false'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const tag = `${{ toJSON(steps.stable.outputs.tag) }}`;
+            const target = core.getInput('target_branch', { required: true });
+            const auto = core.getBooleanInput('auto_merge');
+            const branch = `${{ steps.revert.outputs.branch }}`;
+            const defaultTitle = `Rollback ${target} to ${tag}`;
+            const title = core.getInput('pr_title') || defaultTitle;
+            const defaultBody = [
+              `This PR reverts all commits on ${target} since tag \`${tag}\`.`,
+              '',
+              '**Action**:',
+              `- Target branch: \`${target}\``,
+              `- Rollback to: \`${tag}\``,
+              '',
+              'Generated by the Rollback-to-Latest-Stable workflow.'
+            ].join('\n');
+            const body = core.getInput('pr_body') || defaultBody;
+
+            const { data: pr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              head: branch,
+              base: target,
+              body,
+              maintainer_can_modify: true,
+              draft: false,
+            });
+
+            core.setOutput('number', pr.number.toString());
+            core.setOutput('url', pr.html_url);
+            core.setOutput('branch', branch);
+
+            if (auto) {
+              try {
+                await github.rest.pulls.merge({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  merge_method: 'merge',
+                });
+                core.setOutput('merged', 'true');
+              } catch (e) {
+                core.warning(`Auto-merge attempt failed: ${e.message}`);
+                core.setOutput('merged', 'false');
+              }
+            }
+
+      - name: Summary
+        run: |
+          echo "Latest stable tag: ${{ steps.stable.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "Target branch: ${{ inputs.target_branch }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.revert.outputs.noop }}" = "true" ]; then
+            echo "No-op: target already at latest stable." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Rollback PR: ${{ steps.pr.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+            echo "Branch: ${{ steps.pr.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
+          fi
+
