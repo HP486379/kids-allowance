@@ -1,0 +1,56 @@
+name: Rollback to Latest Stable (direct)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type "ROLLBACK" to confirm force update of main to latest stable-*
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve latest stable tag
+        id: res
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ inputs.confirm }}" != "ROLLBACK" ]]; then
+            echo 'You must type ROLLBACK to confirm.' >&2
+            exit 1
+          fi
+          git fetch --tags origin
+          # Pick the most recently created stable-* tag
+          LATEST=$(git for-each-ref 'refs/tags/stable-*' --sort=-creatordate --format '%(refname:short)' | head -n1 || true)
+          if [[ -z "$LATEST" ]]; then
+            echo 'No stable-* tags found.' >&2
+            exit 1
+          fi
+          SHA=$(git rev-parse "$LATEST^{commit}")
+          echo "tag=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          {
+            echo "Latest stable tag: $LATEST";
+            echo "Target SHA: $SHA";
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Force update main
+        env:
+          SHA: ${{ steps.res.outputs.sha }}
+          TAG: ${{ steps.res.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin "$SHA:refs/heads/main" --force
+          echo "Moved main to $TAG ($SHA)" >> "$GITHUB_STEP_SUMMARY"
+
