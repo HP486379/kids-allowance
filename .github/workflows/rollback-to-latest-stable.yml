@@ -30,8 +30,13 @@ jobs:
             exit 1
           fi
           git fetch --tags origin
-          # Pick the most recently created stable-* tag
-          LATEST=$(git for-each-ref 'refs/tags/stable-*' --sort=-creatordate --format '%(refname:short)' | head -n1 || true)
+          # Pick the most recently created tag matching stable-YYYYMMDD[a-z]?
+          LATEST=$(git for-each-ref 'refs/tags/stable-*' --sort=-creatordate --format '%(refname:short)' |
+                   grep -E '^stable-[0-9]{8}[a-z]?$' | head -n1 || true)
+          # fallback to any stable-* if strict match not found
+          if [[ -z "$LATEST" ]]; then
+            LATEST=$(git for-each-ref 'refs/tags/stable-*' --sort=-creatordate --format '%(refname:short)' | head -n1 || true)
+          fi
           if [[ -z "$LATEST" ]]; then
             echo 'No stable-* tags found.' >&2
             exit 1
@@ -53,4 +58,3 @@ jobs:
           set -euo pipefail
           git push origin "$SHA:refs/heads/main" --force
           echo "Moved main to $TAG ($SHA)" >> "$GITHUB_STEP_SUMMARY"
-

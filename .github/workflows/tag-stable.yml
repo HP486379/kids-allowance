@@ -29,11 +29,15 @@ jobs:
         shell: bash
         run: |
           if [[ -n "${{ inputs.date }}" ]]; then
-            DATE="${{ inputs.date }}"
+            VAL='${{ inputs.date }}'
+            if [[ "$VAL" =~ ^stable- ]]; then
+              TAG="$VAL"   # 既に stable- 付きならそのまま使う
+            else
+              TAG="stable-${VAL}"
+            fi
           else
-            DATE="$(date -u +%Y%m%d)"
+            TAG="stable-$(date -u +%Y%m%d)"
           fi
-          TAG="stable-${DATE}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Configure Git author

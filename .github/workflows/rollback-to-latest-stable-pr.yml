@@ -43,8 +43,13 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --tags origin
-          # Most recently created stable-* tag
-          LATEST=$(git for-each-ref 'refs/tags/stable-*' --sort=-creatordate --format '%(refname:short)' | head -n1 || true)
+          # Most recently created tag matching stable-YYYYMMDD[a-z]?
+          LATEST=$(git for-each-ref 'refs/tags/stable-*' --sort=-creatordate --format '%(refname:short)' |
+                   grep -E '^stable-[0-9]{8}[a-z]?$' | head -n1 || true)
+          # fallback to any stable-* if strict match not found
+          if [[ -z "$LATEST" ]]; then
+            LATEST=$(git for-each-ref 'refs/tags/stable-*' --sort=-creatordate --format '%(refname:short)' | head -n1 || true)
+          fi
           if [[ -z "$LATEST" ]]; then
             echo 'No stable-* tags found.' >&2
             exit 1
@@ -178,4 +183,3 @@ jobs:
             echo "Rollback PR: ${{ steps.pr.outputs.url }}" >> $GITHUB_STEP_SUMMARY
             echo "Branch: ${{ steps.pr.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
           fi
-
