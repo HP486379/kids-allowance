@@ -65,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           TARGET_BRANCH='${{ inputs.target_branch }}'
-          git fetch origin "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}" --depth=0
+          git fetch origin "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}"
           TARGET_SHA=$(git rev-parse "refs/remotes/origin/${TARGET_BRANCH}^{commit}")
           TAG_SHA='${{ steps.stable.outputs.sha }}'
           echo "TARGET_SHA=$TARGET_SHA" >> "$GITHUB_OUTPUT"

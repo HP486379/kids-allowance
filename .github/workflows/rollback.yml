@@ -66,7 +66,7 @@ jobs:
           TARGET_BRANCH='${{ inputs.target_branch }}'
           # タグと対象ブランチの最新を取得
           git fetch --tags origin
-          git fetch origin "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}" --depth=0
+          git fetch origin "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}"
           if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             echo "Tag $TAG not found" >&2
             echo "Tag $TAG not found" >> "$GITHUB_STEP_SUMMARY"
@@ -96,7 +96,7 @@ jobs:
           TAG='${{ inputs.tag }}'
           TARGET_BRANCH='${{ inputs.target_branch }}'
           git fetch --tags origin
-          git fetch origin "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}" --depth=0
+          git fetch origin "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}"
 
           TS=$(date -u +%Y%m%d-%H%M%S)
           BRANCH="rollback/${TARGET_BRANCH}-to-${TAG}-${TS}"
