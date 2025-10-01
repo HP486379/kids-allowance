@@ -6,6 +6,33 @@
     <title>繧ｭ繝・ぜ繝昴こ繝・ヨ 縺雁ｰ城▲縺・い繝励Μ</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23ffd1e6'/%3E%3Ccircle cx='22' cy='26' r='6' fill='%23ff66a3'/%3E%3Crect x='12' y='32' width='40' height='18' rx='9' fill='%23ff9ac6'/%3E%3Ccircle cx='42' cy='26' r='6' fill='%23ff66a3'/%3E%3Crect x='45' y='20' width='8' height='6' rx='2' fill='%23ffa6cf'/%3E%3Ccircle cx='26' cy='40' r='3' fill='%23fff'/%3E%3Ccircle cx='38' cy='40' r='3' fill='%23fff'/%3E%3C/svg%3E" />
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        try {
+          document.title = 'Kids Allowance';
+          const greet = document.querySelector('.greeting');
+          if (greet) greet.textContent = 'Welcome!';
+          const name = document.getElementById('childName');
+          if (name) name.placeholder = 'Enter your name';
+          const balLbl = document.querySelector('.balance-label');
+          if (balLbl) balLbl.textContent = 'Balance';
+          const tab = (key, text) => {
+            const el = document.querySelector(`nav.tabs button[data-tab="${key}"]`);
+            if (el) el.textContent = text;
+          };
+          tab('home', 'Home');
+          tab('transactions', 'Transactions');
+          tab('goals', 'Goals');
+          tab('savings', 'Savings');
+          tab('chores', 'Chores');
+          tab('settings', 'Settings');
+          const qa = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+          qa('quickAdd100', '+100');
+          qa('quickAdd300', '+300');
+          qa('quickSnack', '-150 snack');
+        } catch (_) {}
+      });
+    </script>
   </head>
   <body>
     <div id="app" class="app">
