@@ -105,15 +105,25 @@ jobs:
             echo "noop=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          set +e
-          git revert --no-edit --no-commit $RANGE
-          REVERT_STATUS=$?
-          set -e
-          if [[ $REVERT_STATUS -ne 0 ]]; then
-            echo "Conflicts during revert. Aborting." >&2
-            git revert --abort || true
-            exit 1
-          fi
+          # 個々のコミットを新しい順で順次 revert。マージは -m 1 を付与
+          for C in $(git rev-list $RANGE); do
+            PARENTS_CNT=$(git rev-list --parents -n 1 "$C" | awk '{ print NF-1 }')
+            if [[ "$PARENTS_CNT" -gt 1 ]]; then
+              echo "Reverting merge commit $C with -m 1"
+              if ! git revert -m 1 --no-edit --no-commit "$C"; then
+                echo "Conflict while reverting merge $C" >&2
+                git revert --abort || true
+                exit 1
+              fi
+            else
+              echo "Reverting commit $C"
+              if ! git revert --no-edit --no-commit "$C"; then
+                echo "Conflict while reverting commit $C" >&2
+                git revert --abort || true
+                exit 1
+              fi
+            fi
+          done
 
           git commit -m "chore(rollback): Revert ${TARGET_BRANCH} to ${TAG}"
           git push --set-upstream origin "$BRANCH"

@@ -114,10 +114,9 @@ jobs:
           git checkout -b "$BRANCH" "$TARGET_SHA"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
-          # Revert all commits after TAG up to TARGET
+          # Revert all commits after TAG up to TARGET (handle merges)
           RANGE="$TAG_SHA..$TARGET_SHA"
-          echo "Reverting range: $RANGE"
-          echo "Range: $RANGE" >> "$GITHUB_STEP_SUMMARY"
+          echo "Reverting range: $RANGE" | tee -a "$GITHUB_STEP_SUMMARY"
           # 空レンジはノーオペ
           if [[ "$(git rev-list --count "$RANGE")" -eq 0 ]]; then
             echo "No commits in range (no changes)." >&2
@@ -125,17 +124,27 @@ jobs:
             echo "No-op: empty range" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          set +e
-          git revert --no-edit --no-commit $RANGE
-          REVERT_STATUS=$?
-          set -e
-
-          if [[ $REVERT_STATUS -ne 0 ]]; then
-            echo "Revert encountered conflicts. Aborting to avoid partial rollback." >&2
-            git revert --abort || true
-            echo "Conflicts during revert $RANGE" >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
+          # 個々のコミットを新しい順で順次 revert。マージは -m 1 を付与
+          for C in $(git rev-list $RANGE); do
+            PARENTS_CNT=$(git rev-list --parents -n 1 "$C" | awk '{ print NF-1 }')
+            if [[ "$PARENTS_CNT" -gt 1 ]]; then
+              echo "Reverting merge commit $C with -m 1"
+              if ! git revert -m 1 --no-edit --no-commit "$C"; then
+                echo "Conflict while reverting merge $C" >&2
+                git revert --abort || true
+                echo "Conflicts during revert (merge $C)" >> "$GITHUB_STEP_SUMMARY"
+                exit 1
+              fi
+            else
+              echo "Reverting commit $C"
+              if ! git revert --no-edit --no-commit "$C"; then
+                echo "Conflict while reverting commit $C" >&2
+                git revert --abort || true
+                echo "Conflicts during revert ($C)" >> "$GITHUB_STEP_SUMMARY"
+                exit 1
+              fi
+            fi
+          done
 
           if git diff --quiet; then
             echo "No changes to commit (already at $TAG)." >&2
