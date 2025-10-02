@@ -887,3 +887,13 @@ try{
 
 
 
+
+// Cloud sync OFF stubs
+try{
+  window.KA_CLOUD_DISABLED = true;
+  window.kidsAllowanceAddTx = function(){};
+  window.kidsAllowanceApplyGoals = function(){};
+  window.kidsAllowanceSaveProfile = function(){};
+  window.kidsAllowanceUpdateBalance = function(){};
+  window.kidsAllowanceSync = function(){};
+}catch{}
