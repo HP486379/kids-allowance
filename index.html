@@ -191,7 +191,7 @@
             </div>
           </div>
         </section>
-      </main>
+  </main>
     </div>
 
     <div id="confetti" class="confetti" aria-hidden="true"></div>
@@ -209,5 +209,24 @@
 
     <script type="module" src="js/main.js?v=3"></script>
     <script src="app.js"></script>
+    <script>
+      // 日本語ラベルの恒久化（描画時に上書き）
+      (function(){
+        function setText(sel, txt){ var el=document.querySelector(sel); if(el) el.textContent=txt; }
+        document.addEventListener('DOMContentLoaded', function(){
+          try{
+            document.title = 'キッズぽけっと お小遣いアプリ';
+            setText('.greeting','ようこそ！');
+            var name=document.getElementById('childName'); if(name) name.placeholder='なまえをいれてね';
+            setText('.balance-label','いまのざんだか');
+            // タブ
+            var tabText={home:'ホーム',transactions:'おこづかい',goals:'もくひょう',savings:'ちょきん',chores:'おてつだい',settings:'せってい'};
+            Object.keys(tabText).forEach(function(k){ var el=document.querySelector('nav.tabs button[data-tab="'+k+'"]'); if(el) el.textContent=tabText[k]; });
+            // クイック
+            setText('#quickAdd100','+100'); setText('#quickAdd300','+300'); var qs=document.getElementById('quickSnack'); if(qs) qs.textContent='-150 おやつ';
+          }catch(e){}
+        });
+      })();
+    </script>
   </body>
 </html>
