@@ -22,6 +22,7 @@
   });
 
   let state = load() || seed();
+  try { mirrorToProfile(); } catch(_) {}
 
   // ----- Utils -----
   function id(){ return Math.random().toString(36).slice(2,9) }
