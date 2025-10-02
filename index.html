@@ -234,5 +234,40 @@
     </dialog>
 
     <script src="app.js"></script>
+    <script>
+      (function(){
+        const LS_KEY = 'kid-allowance-v1';
+        function hasBad(s){ return typeof s === 'string' && /\uFFFD/.test(s); }
+        try {
+          const raw = localStorage.getItem(LS_KEY);
+          if (raw) {
+            const st = JSON.parse(raw);
+            if (!st.childName || hasBad(st.childName)) st.childName = 'Guest';
+            if (Array.isArray(st.chores)) {
+              const presets = ['Make the bed','Put toys away','Clean the table'];
+              st.chores.forEach((c,i)=>{ if(!c.name || hasBad(c.name)) c.name = presets[i % presets.length]; });
+            }
+            if (Array.isArray(st.goals)) st.goals.forEach(g=>{ if(hasBad(g.name)) g.name = 'New goal'; });
+            if (Array.isArray(st.transactions)) st.transactions.forEach(t=>{ if(!t.note || hasBad(t.note)) t.note = (t.type==='income'?'Allowance': t.type==='expense'?'Purchase': t.type==='chore'?'Chore':'Transaction'); });
+            localStorage.setItem(LS_KEY, JSON.stringify(st));
+          }
+        } catch(err) { console.warn('normalize state failed', err); }
+
+        function patchLabels(){
+          const map = [
+            ['.greeting','Welcome!'],
+            ['.balance-label','Balance'],
+          ];
+          map.forEach(([sel,txt])=>{ const el=document.querySelector(sel); if(el) el.textContent=txt; });
+          const tab = (key, text)=>{ const el = document.querySelector(`nav.tabs button[data-tab="${key}"]`); if(el){ el.textContent=text; }};
+          tab('home','Home'); tab('transactions','Transactions'); tab('goals','Goals'); tab('savings','Savings'); tab('chores','Chores'); tab('settings','Settings');
+          const qa = (id, text)=>{ const el = document.getElementById(id); if (el) el.textContent = text; };
+          qa('quickAdd100','+100'); qa('quickAdd300','+300'); qa('quickSnack','-150 snack');
+        }
+        patchLabels();
+        const mo = new MutationObserver(()=>patchLabels());
+        mo.observe(document.body, { subtree:true, childList:true });
+      })();
+    </script>
   </body>
 </html>
