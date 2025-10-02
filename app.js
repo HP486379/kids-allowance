@@ -511,14 +511,28 @@ function renderSettings(){
   function deleteTx(id){
     try{
       const idx = (state.transactions||[]).findIndex(t=>t.id===id);
-      if(idx<0) return;
+      if(idx < 0) return;
       if(!confirm('この記録を削除しますか？')) return;
-      state.transactions.splice(idx,1);
-      save();
+      // 変更を確定
+      const next = [...state.transactions];
+      next.splice(idx,1);
+      state.transactions = next;
+      // ローカル保存を強制（LS_KEY と profile の両方）
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(state));
+        if (typeof META !== 'undefined' && META && META.currentId) {
+          localStorage.setItem(pidKey(META.currentId), JSON.stringify(state));
+        }
+      } catch (_) {}
+      // 直後にストレージから読み直してメモリと表示を同期
+      try {
+        const fresh = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+        if (fresh && typeof fresh === 'object') state = fresh;
+      } catch (_) {}
       try{ document.getElementById('balance').textContent = money(computeBalance()); }catch{}
       renderTransactions();
       renderHome();
-    }catch{}
+    } catch(_) {}
   }
 function contributeToGoal(goal){
     const max = computeBalance();
