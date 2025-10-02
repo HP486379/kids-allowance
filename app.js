@@ -211,6 +211,7 @@ function renderTransactions(){
         delBtn.className = 'btn danger tx-del';
         delBtn.textContent = 'さくじょ';
         delBtn.style.marginLeft = '8px';
+        delBtn.type = 'button';
         delBtn.onclick = ()=> deleteTx(t.id);
         li.appendChild(delBtn);
         list.appendChild(li);
