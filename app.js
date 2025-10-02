@@ -207,6 +207,15 @@ function renderTransactions(){
           </div>
           <div class="amount ${isPlus?'good':'bad'}">${isPlus?'+':'−'}${money(t.amount)}</div>
         `;
+        // inline delete button
+        try {
+          const del = document.createElement('button');
+          del.className = 'btn danger';
+          del.textContent = 'Delete';
+          del.style.marginLeft = '8px';
+          del.onclick = ()=> deleteTx(t.id);
+          li.appendChild(del);
+        } catch(_) {}
         list.appendChild(li);
       });
     }
@@ -497,6 +506,20 @@ function renderSettings(){
     if(type==='income' || type==='chore'){
       if(animateCoin) dropCoin();
     }
+  }
+
+  // delete a transaction (by id)
+  function deleteTx(id){
+    try{
+      const idx = (state.transactions||[]).findIndex(t=>t.id===id);
+      if(idx<0) return;
+      if(!confirm('この記録を削除しますか？')) return;
+      state.transactions.splice(idx,1);
+      save();
+      try{ document.getElementById('balance').textContent = money(computeBalance()); }catch{}
+      renderTransactions();
+      renderHome();
+    }catch{}
   }
 function contributeToGoal(goal){
     const max = computeBalance();
