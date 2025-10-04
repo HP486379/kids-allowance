@@ -745,7 +745,11 @@ save(); name.value=''; reward.value=''; renderChores();
 
 // ----- Init ----- ★ 変更: try/catch で保護
 document.addEventListener('DOMContentLoaded', () => {
-try { renderAll(); } catch (e) { console.error('init failed:', e); }
+try {
+renderAll();
+} catch (e) {
+console.error('init failed:', e);
+}
 });
 
 // Cloud transaction -> append to UI/state (avoid feedback & duplicates)
