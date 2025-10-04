@@ -25,14 +25,16 @@ let state = load() || seed();
 try { mirrorToProfile(); } catch(_) {}
 
 // ----- Utils -----
-function id(){ return Math.random().toString(36).slice(2,9) }
-function today(){ return new Date().toISOString().slice(0,10) }
+function id(){ return Math.random().toString(36).slice(2,9); }
+function today(){ return new Date().toISOString().slice(0,10); }
 function format(n){
 const sign = n < 0 ? '-' : '';
 const v = Math.abs(Math.round(n));
 return sign + v.toLocaleString('ja-JP');
 }
-function money(n){ return ${state.currency}${format(n)} }
+function money(n){
+return ${state.currency}${format(n)};
+}
 function save(){
 localStorage.setItem(LS_KEY, JSON.stringify(state));
 mirrorToProfile();
