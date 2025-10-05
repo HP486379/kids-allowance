@@ -87,6 +87,10 @@ function computeBalance(){
     }
   }
   let META = ensureMeta();
+  // goals 用のローカルキャッシュキー（プロフィールID固有）
+  function goalsCacheKey(){
+    try{ return 'kids-allowance:goals:' + (META && META.currentId ? META.currentId : 'default'); }catch{ return 'kids-allowance:goals:default'; }
+  }
   function mirrorToProfile(){
     try{ if(META && META.currentId){ localStorage.setItem(pidKey(META.currentId), JSON.stringify(state)); } }catch{}
   }
@@ -847,7 +851,7 @@ try{
 try{
   (function applyCachedGoalsOnce(){
     try{
-      const raw = localStorage.getItem('kids-allowance:goals');
+      const raw = localStorage.getItem(goalsCacheKey());
       if(raw){
         const g = JSON.parse(raw);
         if(Array.isArray(g) && typeof window.kidsAllowanceApplyGoals === 'function'){
@@ -905,7 +909,7 @@ try{
         const btn = document.createElement('button'); btn.className='btn'; btn.textContent='デバッグ: もくひょう反映';
         btn.onclick = ()=>{
           try{
-            const raw = localStorage.getItem('kids-allowance:goals');
+            const raw = localStorage.getItem(goalsCacheKey());
             const g = raw ? JSON.parse(raw) : [];
             if(typeof window.kidsAllowanceApplyGoals === 'function'){
               window.kidsAllowanceApplyGoals(Array.isArray(g)?g:[]);
