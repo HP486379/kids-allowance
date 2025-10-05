@@ -511,14 +511,28 @@ function renderSettings(){
   function deleteTx(id){
     try{
       const idx = (state.transactions||[]).findIndex(t=>t.id===id);
-      if(idx<0) return;
+      if(idx < 0) return;
       if(!confirm('この記録を削除しますか？')) return;
-      state.transactions.splice(idx,1);
-      save();
+      // 変更を確定
+      const next = [...state.transactions];
+      next.splice(idx,1);
+      state.transactions = next;
+      // ローカル保存を強制（LS_KEY と profile の両方）
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(state));
+        if (typeof META !== 'undefined' && META && META.currentId) {
+          localStorage.setItem(pidKey(META.currentId), JSON.stringify(state));
+        }
+      } catch (_) {}
+      // 直後にストレージから読み直してメモリと表示を同期
+      try {
+        const fresh = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+        if (fresh && typeof fresh === 'object') state = fresh;
+      } catch (_) {}
       try{ document.getElementById('balance').textContent = money(computeBalance()); }catch{}
       renderTransactions();
       renderHome();
-    }catch{}
+    } catch(_) {}
   }
 function contributeToGoal(goal){
     const max = computeBalance();
@@ -868,8 +882,61 @@ try{
     } catch {}
   })();
 }catch{}
+  // ==== Deleted transactions tombstone (prevent cloud resurrection) ====
+  const TOMBSTONE_KEY = 'kid-allowance:deleted';
+  function _loadDeletedSet(){
+    try{ const a = JSON.parse(localStorage.getItem(TOMBSTONE_KEY) || '[]'); return new Set(Array.isArray(a)?a:[]);}catch{ return new Set(); }
+  }
+  function _saveDeletedSet(set){
+    try{ localStorage.setItem(TOMBSTONE_KEY, JSON.stringify([...set].slice(-500))); }catch{}
+  }
+  function _signForKind(kind){ return (kind==='income'||kind==='chore'||kind==='add')?'+':'-'; }
+  function _fp(kind, amount, note){ return `${_signForKind(kind)}|${sanitizeAmount(amount)}|${(note||'').trim()}`; }
+
+  // override: deleteTx(id) with tombstone recording
+  function deleteTx(id){
+    try{
+      const idx = (state.transactions||[]).findIndex(t=>t.id===id);
+      if(idx < 0) return;
+      const delTx = state.transactions[idx];
+      if (delTx){ const s=_loadDeletedSet(); s.add(_fp(delTx.type, delTx.amount, delTx.note)); _saveDeletedSet(s); }
+      if(!confirm('この記録を削除しますか？')) return;
+      const next = [...state.transactions]; next.splice(idx,1); state.transactions = next;
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); if(META&&META.currentId){ localStorage.setItem(pidKey(META.currentId), JSON.stringify(state)); } }catch{}
+      try{ const fresh = JSON.parse(localStorage.getItem(LS_KEY)||'null'); if(fresh&&typeof fresh==='object') state=fresh; }catch{}
+      try{ const b=document.getElementById('balance'); if(b) b.textContent = money(computeBalance()); }catch{}
+      renderTransactions(); renderHome();
+    }catch{}
+  }
+
+  // override: cloud handler to ignore tombstones
+  try{
+    window.kidsAllowanceOnCloudTx = function(key, tx){
+      try{
+        if(!tx) return;
+        const s=_loadDeletedSet(); if (s.has(_fp(tx.type, tx.amount, tx.label||''))) return;
+        window._cloudSeen = window._cloudSeen || new Set();
+        if(window._cloudSeen.has(key)) return; window._cloudSeen.add(key);
+        const t={ id:id(), type:(tx.type==='add'?'income':'expense'), amount:sanitizeAmount(tx.amount), note:tx.label||'', dateISO:new Date(tx.timestamp||Date.now()).toISOString() };
+        const isPlus=(tp)=>tp==='income'||tp==='chore'||tp==='add'; const isMinus=(tp)=>tp==='expense'||tp==='goal'||tp==='subtract'; const sameKind=(a,b)=>(isPlus(a)&&isPlus(b))||(isMinus(a)&&isMinus(b));
+        const recent=state.transactions.slice(-100); const dup=recent.some(u=>u&&sameKind(u.type,t.type)&&u.amount===t.amount&&(u.note||'')===(t.note||'')&&Math.abs(new Date(u.dateISO)-new Date(t.dateISO))<5*60*1000); if(dup) return;
+        state.transactions.push(t); save(); renderHome(); renderTransactions();
+      }catch{}
+    };
+  }catch{}
+
 })();
 
 
 
 
+
+// Cloud sync OFF stubs
+try{
+  window.KA_CLOUD_DISABLED = true;
+  window.kidsAllowanceAddTx = function(){};
+  window.kidsAllowanceApplyGoals = function(){};
+  window.kidsAllowanceSaveProfile = function(){};
+  window.kidsAllowanceUpdateBalance = function(){};
+  window.kidsAllowanceSync = function(){};
+}catch{}
