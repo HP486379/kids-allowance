@@ -222,6 +222,27 @@ function renderTransactions(){
     filter.onchange = paint;
 
     $('#addTransactionBtn').onclick = ()=> openModal($('#txDialog'));
+    // 一括削除ボタン（表示中の絞り込み対象を削除）
+    (function(){
+      const addBtn = $('#addTransactionBtn');
+      if(!addBtn) return;
+      if(document.getElementById('bulkDeleteBtn')) return;
+      const b = document.createElement('button');
+      b.id='bulkDeleteBtn'; b.className='btn danger'; b.style.marginLeft='8px'; b.textContent='一括削除(表示分)';
+      if(addBtn.parentElement) addBtn.parentElement.appendChild(b);
+      b.onclick = ()=>{
+        let items = [...state.transactions].sort((a,b)=>b.dateISO.localeCompare(a.dateISO));
+        const f = $('#filterType'); if(f && f.value!=='all') items = items.filter(t=>t.type===f.value);
+        if(items.length===0){ toast('削除対象がありません'); return; }
+        if(!confirm(`${items.length}件を一括削除します。よろしいですか？`)) return;
+        let delSet = _loadDeletedSet();
+        const ids = new Set();
+        items.forEach(t=>{ delSet.add(_fp(t.type,t.amount,t.note)); ids.add(t.id); });
+        _saveDeletedSet(delSet);
+        state.transactions = state.transactions.filter(t=> !ids.has(t.id));
+        save(); paint(); renderHome();
+      };
+    })();
     $('#txForm').onsubmit = (e)=>{
       e.preventDefault();
       const type = $('#txType').value;
@@ -593,7 +614,7 @@ function confetti(){
       setTimeout(()=> p.remove(), 1600);
     }
   }
-function toast(msg){
+  function toast(msg){
     const el = document.createElement('div');
     el.textContent = msg;
     el.style.position='fixed'; el.style.left='50%'; el.style.bottom='20px'; el.style.transform='translateX(-50%)';
@@ -601,6 +622,24 @@ function toast(msg){
     el.style.zIndex='1001';
     document.body.appendChild(el);
     setTimeout(()=> el.remove(), 1800);
+  }
+
+  // Toast with action button (Undoなど) ------------------------------
+  function toastAction(message, actionLabel, onAction, timeoutMs){
+    const wrap = document.createElement('div');
+    wrap.style.position='fixed'; wrap.style.left='50%'; wrap.style.bottom='22px';
+    wrap.style.transform='translateX(-50%)'; wrap.style.background='#000a'; wrap.style.color='#fff';
+    wrap.style.padding='10px 14px'; wrap.style.borderRadius='999px'; wrap.style.fontWeight='800';
+    wrap.style.zIndex='1002'; wrap.style.display='flex'; wrap.style.gap='12px'; wrap.style.alignItems='center';
+    const span = document.createElement('span'); span.textContent = message; wrap.appendChild(span);
+    const btn = document.createElement('button'); btn.textContent = actionLabel; btn.className='btn';
+    btn.style.background='#fff2'; btn.style.color='#fff'; btn.style.border='1px solid #fff6'; btn.style.borderRadius='8px';
+    btn.onclick = ()=>{ try{ onAction && onAction(); }finally{ if(wrap.parentNode) wrap.parentNode.removeChild(wrap); } };
+    wrap.appendChild(btn);
+    document.body.appendChild(wrap);
+    const t = setTimeout(()=>{ if(wrap.parentNode) wrap.parentNode.removeChild(wrap); }, timeoutMs||4000);
+    // Prevent multiple clicks after timeout
+    btn.addEventListener('click', ()=> clearTimeout(t), { once:true });
   }
 
   // ----- Helpers -----
@@ -894,6 +933,7 @@ try{
   function _fp(kind, amount, note){ return `${_signForKind(kind)}|${sanitizeAmount(amount)}|${(note||'').trim()}`; }
 
   // override: deleteTx(id) with tombstone recording
+  let _undoTimer = null; let _lastDeletedTx = null;
   function deleteTx(id){
     try{
       const idx = (state.transactions||[]).findIndex(t=>t.id===id);
@@ -906,6 +946,19 @@ try{
       try{ const fresh = JSON.parse(localStorage.getItem(LS_KEY)||'null'); if(fresh&&typeof fresh==='object') state=fresh; }catch{}
       try{ const b=document.getElementById('balance'); if(b) b.textContent = money(computeBalance()); }catch{}
       renderTransactions(); renderHome();
+
+      // Undo 機能: 一時的に元データを保持
+      _lastDeletedTx = delTx ? { ...delTx } : null;
+      if(_undoTimer) { clearTimeout(_undoTimer); _undoTimer=null; }
+      toastAction('削除しました', '取り消す', ()=>{
+        try{
+          if(!_lastDeletedTx) return;
+          // tombstone を除去
+          const s=_loadDeletedSet(); s.delete(_fp(_lastDeletedTx.type,_lastDeletedTx.amount,_lastDeletedTx.note)); _saveDeletedSet(s);
+          state.transactions.push(_lastDeletedTx); save(); renderTransactions(); renderHome();
+        }finally{ _lastDeletedTx=null; }
+      }, 4000);
+      _undoTimer = setTimeout(()=>{ _lastDeletedTx=null; }, 4100);
     }catch{}
   }
 
