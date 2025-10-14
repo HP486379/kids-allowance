@@ -1,4 +1,31 @@
-// キッズぽけっと｜お小遣い管理
+  // ---- Manual Cloud Sync (REST over Firebase RTDB) ----
+  function _firebaseHost(){
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if(k && k.startsWith('firebasehost:')){
+          const host = k.substring('firebasehost:'.length);
+          if(host) return 'https://' + host.replace(/^https?:\/\//,'');
+        }
+      }
+    }catch{}
+    // fallback (update if your project ID changes)
+    return 'https://kids-allowance-51817-default-rtdb.asia-southeast1.firebasedatabase.app';
+  }
+  async function cloudSaveProfile(id, payload){
+    try{
+      const url = _firebaseHost() + '/profiles/' + encodeURIComponent(id) + '/state.json';
+      const res = await fetch(url, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      return res.ok;
+    }catch(e){ console.warn('cloudSaveProfile failed', e); return false; }
+  }
+  async function cloudLoadProfile(id){
+    try{
+      const url = _firebaseHost() + '/profiles/' + encodeURIComponent(id) + '/state.json';
+      const res = await fetch(url, { cache:'no-store' });
+      if(!res.ok) return null; return await res.json();
+    }catch(e){ console.warn('cloudLoadProfile failed', e); return null; }
+  }// キッズぽけっと｜お小遣い管理
 // 依存なしのバニラJS。データは localStorage に保存。
 
 (function(){
@@ -32,7 +59,7 @@ function format(n){
     const v = Math.abs(Math.round(n));
     return sign + v.toLocaleString('ja-JP');
   }
-function money(n){ return `${state.currency}${format(n)}` }
+function money(n){ var c = (state && state.currency) ? state.currency : "\u00A5"; if(c === "\\"){ c = "\u00A5"; } return `${c}${format(n)}` }
 function save(){
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   mirrorToProfile();
@@ -429,7 +456,7 @@ function renderSettings(){
   });
 
   $("#settingsName").oninput = (e)=>{ state.childName = e.target.value; save(); $("#childName").value = state.childName; try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
-  $("#currency").onchange = (e)=>{ state.currency = e.target.value; save(); renderHeader(); renderGoals(); renderChores(); renderTransactions(); renderHome(); };
+  $("#currency").onchange = (e)=>{ var v = e.target.value; if(v==="\\"){ v="¥"; } state.currency = v; save(); renderHeader(); renderGoals(); renderChores(); renderTransactions(); renderHome(); };
   $("#themeSelect").onchange = (e)=>{ state.theme = e.target.value; save(); applyTheme(); renderHeader(); renderHome(); renderTransactions(); renderGoals(); renderChores(); renderSettings(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
   try{ const syncDisp = document.getElementById('syncIdDisplay'); if(syncDisp){ syncDisp.value = (META && META.currentId) || ''; } }catch{}
 
@@ -881,23 +908,68 @@ try{
     if(document.getElementById('syncIdRow')) return;
     const row = document.createElement('div');
     row.id='syncIdRow'; row.className='field-row'; row.style.marginTop='8px';
-    const label = document.createElement('label'); label.textContent = '同期ID';
+    const label = document.createElement('label'); label.textContent = '\u540C\u671FID';
     const disp = document.createElement('input'); disp.id='syncIdDisplay'; disp.readOnly=true; disp.style.minWidth='160px'; disp.value = (META && META.currentId) || '';
-    const copyBtn = document.createElement('button'); copyBtn.className='btn'; copyBtn.textContent='コピー';
-    const applyInput = document.createElement('input'); applyInput.id='syncIdInput'; applyInput.placeholder='貼り付けて適用'; applyInput.style.minWidth='160px';
-    const applyBtn = document.createElement('button'); applyBtn.className='btn'; applyBtn.textContent='適用';
+    const copyBtn = document.createElement('button'); copyBtn.className='btn'; copyBtn.textContent='\u30B3\u30D4\u30FC';
+    const applyInput = document.createElement('input'); applyInput.id='syncIdInput'; applyInput.placeholder='\u5165\u529B\u3057\u3066\u9069\u7528'; applyInput.style.minWidth='160px';
+    const applyBtn = document.createElement('button'); applyBtn.className='btn'; applyBtn.textContent='\u9069\u7528';
     row.appendChild(label); row.appendChild(disp); row.appendChild(copyBtn); row.appendChild(applyInput); row.appendChild(applyBtn);
+
+    // Manual Cloud Sync buttons (pull/save)
+    const pullBtn = document.createElement('button');
+    pullBtn.className='btn'; pullBtn.textContent='\u8AAD\u307F\u8FBC\u307F';
+    const pushBtn = document.createElement('button');
+    pushBtn.className='btn'; pushBtn.textContent='\u4FDD\u5B58';
+    row.appendChild(pullBtn);
+    row.appendChild(pushBtn);
+
     card.appendChild(row);
-    copyBtn.onclick = ()=>{ try{ navigator.clipboard.writeText(disp.value); toast('コピーしました'); }catch{ toast('コピーできませんでした'); } };
+    copyBtn.onclick = ()=>{ try{ navigator.clipboard.writeText(disp.value); toast('\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F'); }catch{ toast('\u30B3\u30D4\u30FC\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F'); } };
+
+    // Apply ID, then auto pull from cloud
     applyBtn.onclick = ()=>{
-      const id = (applyInput.value||'').trim(); if(!id){ toast('IDを入力してください'); return; }
+      const id = (applyInput.value||'').trim();
+      if(!id){ toast('ID\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044'); return; }
       try{
         if(!(META.profiles||[]).some(p=>p.id===id)){
-          META.profiles = (META.profiles||[]); META.profiles.push({ id, name: state.childName||'なまえ' });
+          META.profiles = (META.profiles||[]);
+          META.profiles.push({ id, name: state.childName||'\u306A\u307E\u3048' });
         }
         META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
-        const st = loadProfileToActive(id) || initialState(); state = st; renderAll(); toast('同期IDを適用しました');
-      }catch(e){ console.warn(e); }
+
+        cloudLoadProfile(id).then(data=>{
+          if(data && data.state){
+            state = { ...initialState(), ...data.state };
+            save(); renderAll(); toast('\u30AF\u30E9\u30A6\u30C9\u304B\u3089\u8AAD\u307F\u8FBC\u307F\u307E\u3057\u305F');
+          } else {
+            renderAll(); toast('ID\u3092\u9069\u7528\u3057\u307E\u3057\u305F\uFF08\u30AF\u30E9\u30A6\u30C9\u306B\u30C7\u30FC\u30BF\u306A\u3057\uFF09');
+          }
+        }).catch(()=>{
+          renderAll(); toast('ID\u3092\u9069\u7528\u3057\u307E\u3057\u305F');
+        });
+      }catch(e){ console.warn(e); renderAll(); }
+    };
+
+    // Save (push) to cloud
+    pushBtn.onclick = async ()=>{
+      const id = (disp.value||applyInput.value||'').trim();
+      if(!id){ toast('ID\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044'); return; }
+      const ok = await cloudSaveProfile(id, { state, ts: Date.now() });
+      toast(ok ? '\u30AF\u30E9\u30A6\u30C9\u3078\u4FDD\u5B58\u3057\u307E\u3057\u305F' : '\u4FDD\u5B58\u306B\u5931\u6557\u3057\u307E\u3057\u305F');
+    };
+
+    // Pull (load) from cloud
+    pullBtn.onclick = async ()=>{
+      const id = (disp.value||applyInput.value||'').trim();
+      if(!id){ toast('ID\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044'); return; }
+      const data = await cloudLoadProfile(id);
+      if(data && data.state){
+        state = { ...initialState(), ...data.state };
+        save(); renderAll();
+        toast('\u30AF\u30E9\u30A6\u30C9\u304B\u3089\u8AAD\u307F\u8FBC\u307F\u307E\u3057\u305F');
+      } else {
+        toast('\u30AF\u30E9\u30A6\u30C9\u306B\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093');
+      }
     };
 
     // Debug helpers (enable with ?debug=1)
@@ -906,24 +978,23 @@ try{
       if (u.get('debug') === '1') {
         const dbgRow = document.createElement('div');
         dbgRow.className = 'field-row';
-        const btn = document.createElement('button'); btn.className='btn'; btn.textContent='デバッグ: もくひょう反映';
+        const btn = document.createElement('button'); btn.className='btn'; btn.textContent='\u30C7\u30D0\u30C3\u30B0: \u3082\u304F\u3072\u3087\u3046\u53CD\u6620';
         btn.onclick = ()=>{
           try{
             const raw = localStorage.getItem(goalsCacheKey());
             const g = raw ? JSON.parse(raw) : [];
             if(typeof window.kidsAllowanceApplyGoals === 'function'){
               window.kidsAllowanceApplyGoals(Array.isArray(g)?g:[]);
-              toast('もくひょうを反映しました');
+              toast('\u3082\u304F\u3072\u3087\u3046\u3092\u53CD\u6620\u3057\u307E\u3057\u305F');
             } else {
-              toast('applyGoals が未定義です');
+              toast('applyGoals \u304C\u672A\u5B9A\u7FA9\u3067\u3059');
             }
-          }catch(e){ console.warn(e); toast('反映に失敗しました'); }
+          }catch(e){ console.warn(e); toast('\u53CD\u6620\u306B\u5931\u6557\u3057\u307E\u3057\u305F'); }
         };
         dbgRow.appendChild(btn);
         card.appendChild(dbgRow);
       }
-    } catch {}
-  })();
+    } catch {}})();
 }catch{}
   // ==== Deleted transactions tombstone (prevent cloud resurrection) ====
   const TOMBSTONE_KEY = 'kid-allowance:deleted';
@@ -997,3 +1068,13 @@ try{
   window.kidsAllowanceUpdateBalance = function(){};
   window.kidsAllowanceSync = function(){};
 }catch{}
+
+
+
+
+
+
+
+
+
+
