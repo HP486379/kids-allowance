@@ -313,18 +313,18 @@ function renderGoals(){
     }
 
     $('#addGoalBtn').onclick = ()=> openModal($('#goalDialog'));
-    $('#goalForm').onsubmit = (e)=>{
-      e.preventDefault();
-      const name = $('#goalName').value.trim();
-      const target = parseAmount($('#goalTarget').value);
-      if(!name) return toast('なまえをいれてね');
-      if(!validAmount(target)) return toast('目標金額を正しく入れてね');
-      state.goals.push({ id:id(), name, target, saved:0 });
-      save();
-      closeModal($('#goalDialog'));
-      e.target.reset();
-      renderGoals();
-    };
+  $('#goalForm').onsubmit = (e)=>{
+    e.preventDefault();
+    const name = $('#goalName').value.trim();
+    const target = parseAmount($('#goalTarget').value);
+    if(!name) return toast('なまえをいれてね');
+    if(!validAmount(target)) return toast('目標金額を正しく入れてね');
+    state.goals.push({ id:id(), name, target, saved:0 });
+    save(); try{ mirrorGoalsCache(); }catch{}
+    closeModal($('#goalDialog'));
+    e.target.reset();
+    renderGoals();
+  };
   }
   // ===== Savings (ちょきん確認・戻す) =====
   function renderSavings(){
@@ -568,8 +568,16 @@ function renderSettings(){
     } catch(_) {}
   }
   function contributeToGoal(goal){
-    const max = computeBalance();
-    if(max<=0) return toast('まずはおこづかいをためよう！');
+    // Use a safe computed balance; avoid transient zero state
+    let max = Number(computeBalance()||0);
+    if(!Number.isFinite(max)) max = 0;
+    if(max <= 0){
+      // If transactions exist but balance is non-negative after rounding, allow
+      const approx = Math.round(max);
+      if(approx <= 0 && (state.transactions||[]).length===0){
+        return toast('まずはおこづかいをためよう！');
+      }
+    }
     const val = prompt(`いくらちょきんする？（最大 ${money(max)}）`, Math.min(300, max).toString());
     const amount = parseAmount(val||'');
     if(!validAmount(amount)) return;
@@ -853,6 +861,10 @@ try{
         target: Math.round(Number(g && g.target) || 0),
         saved: Math.round(Number(g && g.saved) || 0)
       })) : [];
+      // If incoming is empty and既存にゴールがあれば保持（空で上書きしない）
+      if(arr.length===0 && Array.isArray(state.goals) && state.goals.length>0){
+        return; // ignore empty update
+      }
       // Replace entire goals list
       state.goals = arr;
       // Persist locally and re-render; may trigger sync, which is fine
@@ -869,7 +881,7 @@ try{
       const raw = localStorage.getItem(goalsCacheKey());
       if(raw){
         const g = JSON.parse(raw);
-        if(Array.isArray(g) && typeof window.kidsAllowanceApplyGoals === 'function'){
+        if(Array.isArray(g) && g.length>0 && typeof window.kidsAllowanceApplyGoals === 'function'){
           window.kidsAllowanceApplyGoals(g);
         }
       }
