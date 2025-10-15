@@ -1,5 +1,5 @@
-// キッズぽけっと｜お小遣い管理
-// 依存なしのバニラJS。データは localStorage に保存。
+﻿// 繧ｭ繝・ぜ縺ｽ縺代▲縺ｨ・懊♀蟆城▲縺・ｮ｡逅・
+// 萓晏ｭ倥↑縺励・繝舌ル繝ｩJS縲ゅョ繝ｼ繧ｿ縺ｯ localStorage 縺ｫ菫晏ｭ倥・
 
 (function(){
   const LS_KEY = 'kid-allowance-v1';
@@ -9,15 +9,15 @@
   // ----- State -----
   const initialState = () => ({
     childName: '',
-    avatar: '🐻',
-    currency: '¥',
+    avatar: '製',
+    currency: 'ﾂ･',
     theme: 'cute', // 'cute' | 'adventure'
     transactions: [], // {id, type:income|expense|goal|chore, amount, note, dateISO}
     goals: [], // {id, name, target, saved}
     chores: [
-      { id: id(), name:'ベッドをととのえる', reward:100, lastDone:'' },
-      { id: id(), name:'しょるいをかたづける', reward:100, lastDone:'' },
-      { id: id(), name:'しょくだい', reward:150, lastDone:'' },
+      { id: id(), name:'繝吶ャ繝峨ｒ縺ｨ縺ｨ縺ｮ縺医ｋ', reward:100, lastDone:'' },
+      { id: id(), name:'縺励ｇ繧九＞繧偵°縺溘▼縺代ｋ', reward:100, lastDone:'' },
+      { id: id(), name:'縺励ｇ縺上□縺・, reward:150, lastDone:'' },
     ],
   });
 
@@ -43,12 +43,12 @@ function save(){
 function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY) || ''); }catch{ return null } }
 function seed(){
     const st = initialState();
-    st.childName = 'なまえ';
+    st.childName = '縺ｪ縺ｾ縺・;
     st.transactions = [
-      { id:id(), type:'income', amount:300, note:'はじめてのおこづかい', dateISO:new Date().toISOString() },
-      { id:id(), type:'expense', amount:120, note:'おやつ', dateISO:new Date().toISOString() },
+      { id:id(), type:'income', amount:300, note:'縺ｯ縺倥ａ縺ｦ縺ｮ縺翫％縺･縺九＞', dateISO:new Date().toISOString() },
+      { id:id(), type:'expense', amount:120, note:'縺翫ｄ縺､', dateISO:new Date().toISOString() },
     ];
-    st.goals = [ { id:id(), name:'レゴ', target:2000, saved:300 } ];
+    st.goals = [ { id:id(), name:'繝ｬ繧ｴ', target:2000, saved:300 } ];
     localStorage.setItem(LS_KEY, JSON.stringify(st));
     return st;
   }
@@ -71,7 +71,7 @@ function computeBalance(){
       let meta = JSON.parse(localStorage.getItem(META_KEY) || '');
       if(!meta || !Array.isArray(meta.profiles) || !meta.profiles.length){
         const id = idGen();
-        meta = { profiles:[{ id, name:'なまえ' }], currentId:id };
+        meta = { profiles:[{ id, name:'縺ｪ縺ｾ縺・ }], currentId:id };
         const st = load() || initialState();
         localStorage.setItem(pidKey(id), JSON.stringify(st));
         localStorage.setItem(META_KEY, JSON.stringify(meta));
@@ -81,12 +81,40 @@ function computeBalance(){
       const id = idGen();
       const st = load() || initialState();
       localStorage.setItem(pidKey(id), JSON.stringify(st));
-      const meta = { profiles:[{ id, name:'なまえ' }], currentId:id };
+      const meta = { profiles:[{ id, name:'縺ｪ縺ｾ縺・ }], currentId:id };
       localStorage.setItem(META_KEY, JSON.stringify(meta));
       return meta;
     }
   }
   let META = ensureMeta();
+  // ---- Manual Cloud Sync (REST over Firebase RTDB) ----
+  function _firebaseHost(){
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if(k && k.startsWith('firebasehost:')){
+          const host = k.substring('firebasehost:'.length);
+          if(host) return 'https://' + host.replace(/^https?:\/\//,'');
+        }
+      }
+    }catch{}
+    // fallback (update if your project ID changes)
+    return 'https://kids-allowance-51817-default-rtdb.asia-southeast1.firebasedatabase.app';
+  }
+  async function cloudSaveProfile(id, payload){
+    try{
+      const url = _firebaseHost() + '/profiles/' + encodeURIComponent(id) + '/state.json';
+      const res = await fetch(url, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      return res.ok;
+    }catch(e){ console.warn('cloudSaveProfile failed', e); return false; }
+  }
+  async function cloudLoadProfile(id){
+    try{
+      const url = _firebaseHost() + '/profiles/' + encodeURIComponent(id) + '/state.json';
+      const res = await fetch(url, { cache:'no-store' });
+      if(!res.ok) return null; return await res.json();
+    }catch(e){ console.warn('cloudLoadProfile failed', e); return null; }
+  }
   function mirrorToProfile(){
     try{ if(META && META.currentId){ localStorage.setItem(pidKey(META.currentId), JSON.stringify(state)); } }catch{}
   }
@@ -158,10 +186,10 @@ function renderHome(){
     const recent = [...state.transactions].sort((a,b)=>b.dateISO.localeCompare(a.dateISO)).slice(0,6);
     const ul = $('#recentList');
     ul.innerHTML = '';
-    if(recent.length===0){ ul.innerHTML = '<li>まだないよ</li>'; }
+    if(recent.length===0){ ul.innerHTML = '<li>縺ｾ縺縺ｪ縺・ｈ</li>'; }
     recent.forEach(t=>{
       const li = document.createElement('li');
-      const icon = t.type==='income' || t.type==='chore' ? '＋' : '−';
+      const icon = t.type==='income' || t.type==='chore' ? '・・ : '竏・;
       const col = t.type==='income' || t.type==='chore' ? 'good' : 'bad';
       li.innerHTML = `
         <div>
@@ -174,17 +202,17 @@ function renderHome(){
     });
 
     // quick buttons
-    $('#quickAdd100').onclick = ()=> addTx('income', 100, 'プチおこづかい', true);
-    $('#quickAdd300').onclick = ()=> addTx('income', 300, 'おこづかい', true);
-    $('#quickSnack').onclick = ()=> addTx('expense', 150, 'おやつ', true);
+    $('#quickAdd100').onclick = ()=> addTx('income', 100, '繝励メ縺翫％縺･縺九＞', true);
+    $('#quickAdd300').onclick = ()=> addTx('income', 300, '縺翫％縺･縺九＞', true);
+    $('#quickSnack').onclick = ()=> addTx('expense', 150, '縺翫ｄ縺､', true);
 
     $('#quickForm').onsubmit = (e)=>{
       e.preventDefault();
       const type = $('#quickType').value;
       const amount = parseAmount($('#quickAmount').value);
       const note = $('#quickNote').value.trim();
-      if(!validAmount(amount)) return toast('金額を正しく入れてね');
-      if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
+      if(!validAmount(amount)) return toast('驥鷹｡阪ｒ豁｣縺励￥蜈･繧後※縺ｭ');
+      if(amount >= 10000 && !confirm(`驥鷹｡阪′ ${money(amount)} 縺ｫ縺ｪ縺｣縺ｦ縺・∪縺吶ゅｈ繧阪＠縺・〒縺吶°・歔)) return;
       addTx(type, amount, note || labelForType(type), true);
       $('#quickAmount').value = '';
       $('#quickNote').value = '';
@@ -197,7 +225,7 @@ function renderTransactions(){
       list.innerHTML = '';
       let items = [...state.transactions].sort((a,b)=>b.dateISO.localeCompare(a.dateISO));
       if(filter.value!=='all') items = items.filter(t=>t.type===filter.value);
-      if(items.length===0){ list.innerHTML = '<li>まだないよ</li>'; return; }
+      if(items.length===0){ list.innerHTML = '<li>縺ｾ縺縺ｪ縺・ｈ</li>'; return; }
       items.forEach(t=>{
         const li = document.createElement('li');
         const isPlus = t.type==='income' || t.type==='chore';
@@ -206,11 +234,11 @@ function renderTransactions(){
             <div class="note">${escapeHtml(t.note||labelForType(t.type))}</div>
             <div class="meta">${dateJa(t.dateISO)}</div>
           </div>
-          <div class="amount ${isPlus?'good':'bad'}">${isPlus?'+':'−'}${money(t.amount)}</div>
+          <div class="amount ${isPlus?'good':'bad'}">${isPlus?'+':'竏・}${money(t.amount)}</div>
         `;
         const delBtn = document.createElement('button');
         delBtn.className = 'btn danger tx-del';
-        delBtn.textContent = 'さくじょ';
+        delBtn.textContent = '縺輔￥縺倥ｇ';
         delBtn.style.marginLeft = '8px';
         delBtn.type = 'button';
         delBtn.onclick = ()=> deleteTx(t.id);
@@ -227,8 +255,8 @@ function renderTransactions(){
       const type = $('#txType').value;
       const amount = parseAmount($('#txAmount').value);
       const note = $('#txNote').value.trim();
-      if(!validAmount(amount)) return toast('金額を正しく入れてね');
-      if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
+      if(!validAmount(amount)) return toast('驥鷹｡阪ｒ豁｣縺励￥蜈･繧後※縺ｭ');
+      if(amount >= 10000 && !confirm(`驥鷹｡阪′ ${money(amount)} 縺ｫ縺ｪ縺｣縺ｦ縺・∪縺吶ゅｈ繧阪＠縺・〒縺吶°・歔)) return;
       addTx(type, amount, note || labelForType(type), true);
       closeModal($('#txDialog'));
       e.target.reset();
@@ -241,7 +269,7 @@ function renderGoals(){
     if(state.goals.length===0){
       const empty = document.createElement('div');
       empty.className='card';
-      empty.textContent = 'まだもくひょうがないよ。つくってみよう！';
+      empty.textContent = '縺ｾ縺繧ゅ￥縺ｲ繧・≧縺後↑縺・ｈ縲ゅ▽縺上▲縺ｦ縺ｿ繧医≧・・;
       wrap.appendChild(empty);
     } else {
       state.goals.forEach(g=>{
@@ -256,9 +284,9 @@ function renderGoals(){
             <div class="goal-name">${escapeHtml(g.name)}</div>
             <div class="meta">${money(g.saved)} / ${money(g.target)}</div>
             <div class="goal-actions">
-              <button class="btn primary" data-act="save">ちょきんする</button>
-              <button class="btn" data-act="edit">変更</button>
-              <button class="btn danger" data-act="delete">けす</button>
+              <button class="btn primary" data-act="save">縺｡繧・″繧薙☆繧・/button>
+              <button class="btn" data-act="edit">螟画峩</button>
+              <button class="btn danger" data-act="delete">縺代☆</button>
             </div>
           </div>
         `;
@@ -270,10 +298,10 @@ function renderGoals(){
         delBtn.onclick = ()=> deleteGoal(g);
 
         if(g.saved >= g.target){
-          // 完了バッジ
+          // 螳御ｺ・ヰ繝・ず
           const done = document.createElement('div');
           done.className = 'meta';
-          done.textContent = 'おめでとう！ もくひょう たっせい！';
+          done.textContent = '縺翫ａ縺ｧ縺ｨ縺・ｼ・繧ゅ￥縺ｲ繧・≧ 縺溘▲縺帙＞・・;
           card.appendChild(done);
         }
       });
@@ -284,8 +312,8 @@ function renderGoals(){
       e.preventDefault();
       const name = $('#goalName').value.trim();
       const target = parseAmount($('#goalTarget').value);
-      if(!name) return toast('なまえをいれてね');
-      if(!validAmount(target)) return toast('目標金額を正しく入れてね');
+      if(!name) return toast('縺ｪ縺ｾ縺医ｒ縺・ｌ縺ｦ縺ｭ');
+      if(!validAmount(target)) return toast('逶ｮ讓咎≡鬘阪ｒ豁｣縺励￥蜈･繧後※縺ｭ');
       state.goals.push({ id:id(), name, target, saved:0 });
       save();
       closeModal($('#goalDialog'));
@@ -293,18 +321,18 @@ function renderGoals(){
       renderGoals();
     };
   }
-  // ===== Savings (ちょきん確認・戻す) =====
+  // ===== Savings (縺｡繧・″繧鍋｢ｺ隱阪・謌ｻ縺・ =====
   function renderSavings(){
     const wrap = document.getElementById('savingsList');
     const sumEl = document.getElementById('savingsSummary');
     if(!wrap || !sumEl) return;
     wrap.innerHTML = '';
     const total = (state.goals||[]).reduce((s,g)=> s + Math.max(0, Math.round(Number(g.saved)||0)), 0);
-    sumEl.textContent = `合計: ${money(total)}`;
+    sumEl.textContent = `蜷郁ｨ・ ${money(total)}`;
     const goals = (state.goals||[]).filter(g => (Math.round(Number(g.saved)||0)) > 0);
     if(goals.length===0){
       const li = document.createElement('li');
-      li.textContent = 'まだ ちょきん はないよ';
+      li.textContent = '縺ｾ縺 縺｡繧・″繧・縺ｯ縺ｪ縺・ｈ';
       wrap.appendChild(li);
       return;
     }
@@ -313,11 +341,11 @@ function renderGoals(){
       li.innerHTML = `
         <div>
           <div class="note">${escapeHtml(g.name)}</div>
-          <div class="meta">いまの ちょきん: ${money(Math.round(Number(g.saved)||0))}</div>
+          <div class="meta">縺・∪縺ｮ 縺｡繧・″繧・ ${money(Math.round(Number(g.saved)||0))}</div>
         </div>
         <div class="goal-actions">
-          <button class="btn" data-act="part">すこし もどす</button>
-          <button class="btn danger" data-act="all">ぜんぶ もどす</button>
+          <button class="btn" data-act="part">縺吶％縺・繧ゅ←縺・/button>
+          <button class="btn danger" data-act="all">縺懊ｓ縺ｶ 繧ゅ←縺・/button>
         </div>
       `;
       wrap.appendChild(li);
@@ -329,18 +357,18 @@ function renderGoals(){
   function withdrawFromGoal(goal, all=false){
     try{
       const cur = Math.max(0, Math.round(Number(goal.saved)||0));
-      if(cur<=0) return toast('この もくひょう に ちょきん はないよ');
+      if(cur<=0) return toast('縺薙・ 繧ゅ￥縺ｲ繧・≧ 縺ｫ 縺｡繧・″繧・縺ｯ縺ｪ縺・ｈ');
       let amount = cur;
       if(!all){
-        const val = prompt(`いくら もどす？（最大 ${money(cur)}）`, Math.min(300, cur).toString());
+        const val = prompt(`縺・￥繧・繧ゅ←縺呻ｼ滂ｼ域怙螟ｧ ${money(cur)}・荏, Math.min(300, cur).toString());
         amount = parseAmount(val||'');
         if(!validAmount(amount)) return;
-        if(amount > cur) return toast('ちょきん より おおいよ');
-        if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
+        if(amount > cur) return toast('縺｡繧・″繧・繧医ｊ 縺翫♀縺・ｈ');
+        if(amount >= 10000 && !confirm(`驥鷹｡阪′ ${money(amount)} 縺ｫ縺ｪ縺｣縺ｦ縺・∪縺吶ゅｈ繧阪＠縺・〒縺吶°・歔)) return;
       }
       amount = sanitizeAmount(amount);
       goal.saved = sanitizeAmount(cur - amount);
-      addTx('income', amount, `もどす: ${goal.name}`);
+      addTx('income', amount, `繧ゅ←縺・ ${goal.name}`);
       save();
       renderGoals();
       renderSavings();
@@ -354,7 +382,7 @@ function renderChores(){
     ul.innerHTML = '';
     if (!Array.isArray(state.chores) || state.chores.length === 0) {
       const li = document.createElement('li');
-      li.textContent = 'まだないよ';
+      li.textContent = '縺ｾ縺縺ｪ縺・ｈ';
       ul.appendChild(li);
       return;
     }
@@ -368,17 +396,17 @@ function renderChores(){
       note.textContent = ch.name;
       const meta = document.createElement('div');
       meta.className = 'meta';
-      meta.textContent = 'ごほうび: ' + money(ch.reward) + (doneToday ? '（きょうはOK）' : '');
+      meta.textContent = '縺斐⊇縺・・: ' + money(ch.reward) + (doneToday ? '・医″繧・≧縺ｯOK・・ : '');
       left.appendChild(note);
       left.appendChild(meta);
       const btn = document.createElement('button');
       btn.className = 'btn good';
-      btn.textContent = 'やった！';
+      btn.textContent = '繧・▲縺滂ｼ・;
       if (doneToday) btn.disabled = true;
       btn.onclick = () => {
         if (ch.lastDone === today()) return;
         ch.lastDone = today();
-        addTx('chore', ch.reward, 'おてつだい ' + ch.name, true);
+        addTx('chore', ch.reward, '縺翫※縺､縺縺・' + ch.name, true);
         save();
         renderChores();
       };
@@ -411,30 +439,30 @@ function renderSettings(){
 
   // Reset
   $("#resetData").onclick = ()=>{
-    if(confirm('データを初期化します。本当によろしいですか？')){
+    if(confirm('繝・・繧ｿ繧貞・譛溷喧縺励∪縺吶よ悽蠖薙↓繧医ｍ縺励＞縺ｧ縺吶°・・)){
       localStorage.removeItem(LS_KEY);
       state = seed();
       renderAll();
-      toast('リセットしました');
+      toast('繝ｪ繧ｻ繝・ヨ縺励∪縺励◆');
     }
   };
 
   // Export / Import
   $("#exportData").onclick = async ()=>{
     const json = JSON.stringify(state, null, 2);
-    $("#ioTitle").textContent = 'エクスポート';
-    $("#ioOk").textContent = 'コピー';
+    $("#ioTitle").textContent = '繧ｨ繧ｯ繧ｹ繝昴・繝・;
+    $("#ioOk").textContent = '繧ｳ繝斐・';
     $("#ioText").value = json;
     openModal($("#ioDialog"));
     $("#ioOk").onclick = (ev)=>{
       ev.preventDefault();
-      try{ navigator.clipboard.writeText($("#ioText").value); toast('クリップボードにコピーしました'); }catch{ toast('コピーできない時は手動で選択してください'); }
+      try{ navigator.clipboard.writeText($("#ioText").value); toast('繧ｯ繝ｪ繝・・繝懊・繝峨↓繧ｳ繝斐・縺励∪縺励◆'); }catch{ toast('繧ｳ繝斐・縺ｧ縺阪↑縺・凾縺ｯ謇句虚縺ｧ驕ｸ謚槭＠縺ｦ縺上□縺輔＞'); }
       closeModal($("#ioDialog"));
     };
   };
   $("#importData").onclick = ()=>{
-    $("#ioTitle").textContent = 'インポート';
-    $("#ioOk").textContent = '読み込み';
+    $("#ioTitle").textContent = '繧､繝ｳ繝昴・繝・;
+    $("#ioOk").textContent = '隱ｭ縺ｿ霎ｼ縺ｿ';
     $("#ioText").value = '';
     openModal($("#ioDialog"));
     $("#ioOk").onclick = (ev)=>{
@@ -445,9 +473,9 @@ function renderSettings(){
         state = { ...initialState(), ...obj };
         save();
         renderAll();
-        toast('インポートしました');
+        toast('繧､繝ｳ繝昴・繝医＠縺ｾ縺励◆');
         closeModal($("#ioDialog"));
-      }catch{ toast('JSONを確認してください'); }
+      }catch{ toast('JSON繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞'); }
     };
   };
 
@@ -458,34 +486,34 @@ function renderSettings(){
       if(!card || document.getElementById('profileRow')) return;
       const row = document.createElement('div');
       row.id = 'profileRow'; row.className = 'field-row'; row.style.marginBottom = '8px';
-      const label = document.createElement('label'); label.textContent = 'ひと';
+      const label = document.createElement('label'); label.textContent = '縺ｲ縺ｨ';
       const sel = document.createElement('select'); sel.id='profileSelect'; sel.className='input'; sel.style.minWidth = '160px';
-      const addBtn = document.createElement('button'); addBtn.className='btn'; addBtn.textContent='追加';
-      const renBtn = document.createElement('button'); renBtn.className='btn'; renBtn.textContent='なまえ変更';
-      const delBtn = document.createElement('button'); delBtn.className='btn danger'; delBtn.textContent='けす';
+      const addBtn = document.createElement('button'); addBtn.className='btn'; addBtn.textContent='霑ｽ蜉';
+      const renBtn = document.createElement('button'); renBtn.className='btn'; renBtn.textContent='縺ｪ縺ｾ縺亥､画峩';
+      const delBtn = document.createElement('button'); delBtn.className='btn danger'; delBtn.textContent='縺代☆';
       row.appendChild(label); row.appendChild(sel); row.appendChild(addBtn); row.appendChild(renBtn); row.appendChild(delBtn);
       card.insertBefore(row, card.firstChild);
       function refreshSelect(){
         sel.innerHTML = '';
         (META && META.profiles || []).forEach(p=>{
-          const o=document.createElement('option'); o.value=p.id; o.textContent=p.name||'なまえ'; if(p.id===META.currentId) o.selected=true; sel.appendChild(o);
+          const o=document.createElement('option'); o.value=p.id; o.textContent=p.name||'縺ｪ縺ｾ縺・; if(p.id===META.currentId) o.selected=true; sel.appendChild(o);
         });
       }
       refreshSelect();
       sel.onchange = ()=>{ if(sel.value) switchProfile(sel.value); };
       addBtn.onclick = ()=>{
-        const name = prompt('なまえ'); if(!name) return;
+        const name = prompt('縺ｪ縺ｾ縺・); if(!name) return;
         const id = idGen(); META.profiles.push({id,name}); META.currentId=id; localStorage.setItem(META_KEY, JSON.stringify(META));
         state = initialState(); state.childName = name; save(); renderAll();
       };
       renBtn.onclick = ()=>{
         const p = META.profiles.find(x=>x.id===META.currentId); if(!p) return;
-        const name = prompt('なまえ', p.name)||p.name; p.name=name; localStorage.setItem(META_KEY, JSON.stringify(META)); refreshSelect();
+        const name = prompt('縺ｪ縺ｾ縺・, p.name)||p.name; p.name=name; localStorage.setItem(META_KEY, JSON.stringify(META)); refreshSelect();
         state.childName = name; save(); renderHeader();
       };
       delBtn.onclick = ()=>{
-        if(META.profiles.length<=1){ alert('最低1名必要です'); return; }
-        if(!confirm('このひとを削除しますか？')) return;
+        if(META.profiles.length<=1){ alert('譛菴・蜷榊ｿ・ｦ√〒縺・); return; }
+        if(!confirm('縺薙・縺ｲ縺ｨ繧貞炎髯､縺励∪縺吶°・・)) return;
         const cur=META.currentId; META.profiles = META.profiles.filter(x=>x.id!==cur);
         try{ localStorage.removeItem(pidKey(cur)); }catch{}
         META.currentId = META.profiles[0].id; localStorage.setItem(META_KEY, JSON.stringify(META));
@@ -507,24 +535,24 @@ function renderSettings(){
     }
   }
 
-  // 取引の削除（さくじょ）
+  // 蜿門ｼ輔・蜑企勁・医＆縺上§繧・ｼ・
   function deleteTx(id){
     try{
       const idx = (state.transactions||[]).findIndex(t=>t.id===id);
       if(idx < 0) return;
-      if(!confirm('この記録を削除しますか？')) return;
-      // 変更を確定
+      if(!confirm('縺薙・險倬鹸繧貞炎髯､縺励∪縺吶°・・)) return;
+      // 螟画峩繧堤｢ｺ螳・
       const next = [...state.transactions];
       next.splice(idx,1);
       state.transactions = next;
-      // ローカル保存を強制（LS_KEY と profile の両方）
+      // 繝ｭ繝ｼ繧ｫ繝ｫ菫晏ｭ倥ｒ蠑ｷ蛻ｶ・・S_KEY 縺ｨ profile 縺ｮ荳｡譁ｹ・・
       try {
         localStorage.setItem(LS_KEY, JSON.stringify(state));
         if (typeof META !== 'undefined' && META && META.currentId) {
           localStorage.setItem(pidKey(META.currentId), JSON.stringify(state));
         }
       } catch (_) {}
-      // 直後にストレージから読み直してメモリと表示を同期
+      // 逶ｴ蠕後↓繧ｹ繝医Ξ繝ｼ繧ｸ縺九ｉ隱ｭ縺ｿ逶ｴ縺励※繝｡繝｢繝ｪ縺ｨ陦ｨ遉ｺ繧貞酔譛・
       try {
         const fresh = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
         if (fresh && typeof fresh === 'object') state = fresh;
@@ -536,32 +564,32 @@ function renderSettings(){
   }
 function contributeToGoal(goal){
     const max = computeBalance();
-    if(max<=0) return toast('まずはおこづかいをためよう！');
-    const val = prompt(`いくらちょきんする？（最大 ${money(max)}）`, Math.min(300, max).toString());
+    if(max<=0) return toast('縺ｾ縺壹・縺翫％縺･縺九＞繧偵◆繧√ｈ縺・ｼ・);
+    const val = prompt(`縺・￥繧峨■繧・″繧薙☆繧具ｼ滂ｼ域怙螟ｧ ${money(max)}・荏, Math.min(300, max).toString());
     const amount = parseAmount(val||'');
     if(!validAmount(amount)) return;
-    if(amount > max) return toast('ざんだかよりおおいよ');
-    if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
+    if(amount > max) return toast('縺悶ｓ縺縺九ｈ繧翫♀縺翫＞繧・);
+    if(amount >= 10000 && !confirm(`驥鷹｡阪′ ${money(amount)} 縺ｫ縺ｪ縺｣縺ｦ縺・∪縺吶ゅｈ繧阪＠縺・〒縺吶°・歔)) return;
     goal.saved += amount;
-    addTx('goal', amount, `ちょきん: ${goal.name}`);
+    addTx('goal', amount, `縺｡繧・″繧・ ${goal.name}`);
     save();
     renderGoals();
     if(goal.saved >= goal.target){
       confetti();
-      toast('おめでとう！ もくひょう たっせい！');
+      toast('縺翫ａ縺ｧ縺ｨ縺・ｼ・繧ゅ￥縺ｲ繧・≧ 縺溘▲縺帙＞・・);
     }
   }
 function editGoal(goal){
-    const name = prompt('なまえ', goal.name)||goal.name;
-    const target = parseAmount(prompt('目標金額', String(goal.target))||String(goal.target));
-    if(!validAmount(target)) return toast('目標金額を正しく入れてね');
+    const name = prompt('縺ｪ縺ｾ縺・, goal.name)||goal.name;
+    const target = parseAmount(prompt('逶ｮ讓咎≡鬘・, String(goal.target))||String(goal.target));
+    if(!validAmount(target)) return toast('逶ｮ讓咎≡鬘阪ｒ豁｣縺励￥蜈･繧後※縺ｭ');
     goal.name = name.trim()||goal.name;
     goal.target = target;
     save();
     renderGoals();
   }
 function deleteGoal(goal){
-    if(!confirm('もくひょうをけしますか？')) return;
+    if(!confirm('繧ゅ￥縺ｲ繧・≧繧偵￠縺励∪縺吶°・・)) return;
     state.goals = state.goals.filter(g=>g.id!==goal.id);
     save();
     renderGoals();
@@ -613,9 +641,9 @@ function applyTheme(){
   }
 function getAvatarChoices(){
     if(state.theme==='adventure'){
-      return ['🚀','🛸','🤖','🦖','🛰️','⚽','🎮','🧭','🛡️','🗡️','🧱','🐲'];
+      return ['噫','嶌','､・,'ｦ・,'峅・・,'笞ｽ','式','ｧｭ','孱・・,'裡・・,'ｧｱ','栖'];
     }
-    return ['🐻','🐱','🐯','🐰','🐼','🦊','🐨','🦄','🐣','🐵','🐶','🐸'];
+    return ['製','棲','星','晴','西','ｦ・,'勢','ｦ・,'瀬','牲','生','精'];
   }
 function dateJa(iso){
     try{
@@ -627,18 +655,18 @@ function dateJa(iso){
     }catch{ return '' }
   }
 function labelForType(type){
-    return type==='income' ? 'おこづかい' : type==='expense' ? 'おかいもの' : type==='goal' ? 'ちょきん' : 'おてつだい';
+    return type==='income' ? '縺翫％縺･縺九＞' : type==='expense' ? '縺翫°縺・ｂ縺ｮ' : type==='goal' ? '縺｡繧・″繧・ : '縺翫※縺､縺縺・;
   }
-// 入力金額の安全なパース（小数や全角・通貨記号を考慮）
+// 蜈･蜉幃≡鬘阪・螳牙・縺ｪ繝代・繧ｹ・亥ｰ乗焚繧・・隗偵・騾夊ｲｨ險伜捷繧定・・・・
 function toHalfWidthDigits(s){
-    return String(s||'').replace(/[０-９]/g, c=> String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+    return String(s||'').replace(/[・・・兢/g, c=> String.fromCharCode(c.charCodeAt(0)-0xFEE0));
 }
 function parseAmount(v){
     v = toHalfWidthDigits(v);
     if(typeof v !== 'string') v = String(v||'');
-    v = v.trim().replace(/[¥￥$,\s]/g,''); // 通貨・カンマ・空白を除去
-    // 小数セパレータが含まれる場合は整数部のみ採用（100.50 -> 100）
-    const intPart = v.split(/[\.｡､，．]/)[0].replace(/[^0-9]/g,'');
+    v = v.trim().replace(/[ﾂ･・･$,\s]/g,''); // 騾夊ｲｨ繝ｻ繧ｫ繝ｳ繝槭・遨ｺ逋ｽ繧帝勁蜴ｻ
+    // 蟆乗焚繧ｻ繝代Ξ繝ｼ繧ｿ縺悟性縺ｾ繧後ｋ蝣ｴ蜷医・謨ｴ謨ｰ驛ｨ縺ｮ縺ｿ謗｡逕ｨ・・00.50 -> 100・・
+    const intPart = v.split(/[\.・｡・､・鯉ｼ讃/)[0].replace(/[^0-9]/g,'');
     const n = intPart ? parseInt(intPart,10) : 0;
     return Number.isFinite(n) ? n : 0;
 }
@@ -838,23 +866,66 @@ try{
     if(document.getElementById('syncIdRow')) return;
     const row = document.createElement('div');
     row.id='syncIdRow'; row.className='field-row'; row.style.marginTop='8px';
-    const label = document.createElement('label'); label.textContent = '同期ID';
+    const label = document.createElement('label'); label.textContent = '蜷梧悄ID';
     const disp = document.createElement('input'); disp.id='syncIdDisplay'; disp.readOnly=true; disp.style.minWidth='160px'; disp.value = (META && META.currentId) || '';
-    const copyBtn = document.createElement('button'); copyBtn.className='btn'; copyBtn.textContent='コピー';
-    const applyInput = document.createElement('input'); applyInput.id='syncIdInput'; applyInput.placeholder='貼り付けて適用'; applyInput.style.minWidth='160px';
-    const applyBtn = document.createElement('button'); applyBtn.className='btn'; applyBtn.textContent='適用';
+    const copyBtn = document.createElement('button'); copyBtn.className='btn'; copyBtn.textContent='繧ｳ繝斐・';
+    const applyInput = document.createElement('input'); applyInput.id='syncIdInput'; applyInput.placeholder='雋ｼ繧贋ｻ倥￠縺ｦ驕ｩ逕ｨ'; applyInput.style.minWidth='160px';
+    const applyBtn = document.createElement('button'); applyBtn.className='btn'; applyBtn.textContent='驕ｩ逕ｨ';
     row.appendChild(label); row.appendChild(disp); row.appendChild(copyBtn); row.appendChild(applyInput); row.appendChild(applyBtn);
+    // Manual Cloud Sync buttons (pull/save)
+    const pullBtn = document.createElement('button');
+    pullBtn.className='btn'; pullBtn.textContent='読み込み';
+    const pushBtn = document.createElement('button');
+    pushBtn.className='btn'; pushBtn.textContent='保存';
+    row.appendChild(pullBtn);
+    row.appendChild(pushBtn);
     card.appendChild(row);
-    copyBtn.onclick = ()=>{ try{ navigator.clipboard.writeText(disp.value); toast('コピーしました'); }catch{ toast('コピーできませんでした'); } };
+    // Save (push) current state to cloud
+    pushBtn.onclick = async ()=>{
+      const id = (disp.value||applyInput.value||'').trim();
+      if(!id){ toast('IDを入力してください'); return; }
+      const ok = await cloudSaveProfile(id, { state, ts: Date.now() });
+      toast(ok ? 'クラウドへ保存しました' : '保存に失敗しました');
+    };
+    // Pull (load) state from cloud into local
+    pullBtn.onclick = async ()=>{
+      const id = (disp.value||applyInput.value||'').trim();
+      if(!id){ toast('IDを入力してください'); return; }
+      const data = await cloudLoadProfile(id);
+      if(data && data.state){ state = { ...initialState(), ...data.state }; save(); renderAll(); toast('クラウドから読み込みました'); }
+      else { toast('クラウドにデータがありません'); }
+    };
+    copyBtn.onclick = ()=>{ try{ navigator.clipboard.writeText(disp.value); toast('繧ｳ繝斐・縺励∪縺励◆'); }catch{ toast('繧ｳ繝斐・縺ｧ縺阪∪縺帙ｓ縺ｧ縺励◆'); } };
     applyBtn.onclick = ()=>{
-      const id = (applyInput.value||'').trim(); if(!id){ toast('IDを入力してください'); return; }
+      const id = (applyInput.value||'').trim(); if(!id){ toast('ID繧貞・蜉帙＠縺ｦ縺上□縺輔＞'); return; }
       try{
         if(!(META.profiles||[]).some(p=>p.id===id)){
-          META.profiles = (META.profiles||[]); META.profiles.push({ id, name: state.childName||'なまえ' });
+          META.profiles = (META.profiles||[]); META.profiles.push({ id, name: state.childName||'縺ｪ縺ｾ縺・ });
         }
         META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
-        const st = loadProfileToActive(id) || initialState(); state = st; renderAll(); toast('同期IDを適用しました');
+        const st = loadProfileToActive(id) || initialState(); state = st; renderAll(); toast('蜷梧悄ID繧帝←逕ｨ縺励∪縺励◆');
       }catch(e){ console.warn(e); }
+    };
+
+    // override: Apply -> auto fetch from cloud if available
+    applyBtn.onclick = ()=>{
+      const id = (applyInput.value||'').trim();
+      if(!id){ toast('ID繧貞・蜉帙＠縺ｦ縺上□縺輔＞'); return; }
+      try{
+        if(!(META.profiles||[]).some(p=>p.id===id)){
+          META.profiles = (META.profiles||[]);
+          META.profiles.push({ id, name: state.childName||'縺ｪ縺ｾ縺・ });
+        }
+        META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
+        cloudLoadProfile(id).then(data=>{
+          if(data && data.state){
+            state = { ...initialState(), ...data.state };
+            save(); renderAll(); toast('繧ｯ繝ｩ繧ｦ繝峨°繧芽ｪｭ縺ｿ霎ｼ縺ｿ縺ｾ縺励◆');
+          } else {
+            renderAll(); toast('ID繧帝←逕ｨ縺励∪縺励◆・医け繝ｩ繧ｦ繝峨↓繝・・繧ｿ縺ｪ縺暦ｼ・);
+          }
+        }).catch(()=>{ renderAll(); toast('ID繧帝←逕ｨ縺励∪縺励◆'); });
+      }catch(e){ console.warn(e); renderAll(); }
     };
 
     // Debug helpers (enable with ?debug=1)
@@ -863,18 +934,18 @@ try{
       if (u.get('debug') === '1') {
         const dbgRow = document.createElement('div');
         dbgRow.className = 'field-row';
-        const btn = document.createElement('button'); btn.className='btn'; btn.textContent='デバッグ: もくひょう反映';
+        const btn = document.createElement('button'); btn.className='btn'; btn.textContent='繝・ヰ繝・げ: 繧ゅ￥縺ｲ繧・≧蜿肴丐';
         btn.onclick = ()=>{
           try{
             const raw = localStorage.getItem('kids-allowance:goals');
             const g = raw ? JSON.parse(raw) : [];
             if(typeof window.kidsAllowanceApplyGoals === 'function'){
               window.kidsAllowanceApplyGoals(Array.isArray(g)?g:[]);
-              toast('もくひょうを反映しました');
+              toast('繧ゅ￥縺ｲ繧・≧繧貞渚譏縺励∪縺励◆');
             } else {
-              toast('applyGoals が未定義です');
+              toast('applyGoals 縺梧悴螳夂ｾｩ縺ｧ縺・);
             }
-          }catch(e){ console.warn(e); toast('反映に失敗しました'); }
+          }catch(e){ console.warn(e); toast('蜿肴丐縺ｫ螟ｱ謨励＠縺ｾ縺励◆'); }
         };
         dbgRow.appendChild(btn);
         card.appendChild(dbgRow);
@@ -900,7 +971,7 @@ try{
       if(idx < 0) return;
       const delTx = state.transactions[idx];
       if (delTx){ const s=_loadDeletedSet(); s.add(_fp(delTx.type, delTx.amount, delTx.note)); _saveDeletedSet(s); }
-      if(!confirm('この記録を削除しますか？')) return;
+      if(!confirm('縺薙・險倬鹸繧貞炎髯､縺励∪縺吶°・・)) return;
       const next = [...state.transactions]; next.splice(idx,1); state.transactions = next;
       try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); if(META&&META.currentId){ localStorage.setItem(pidKey(META.currentId), JSON.stringify(state)); } }catch{}
       try{ const fresh = JSON.parse(localStorage.getItem(LS_KEY)||'null'); if(fresh&&typeof fresh==='object') state=fresh; }catch{}
