@@ -1,5 +1,5 @@
-// キッズぽけっと｜お小遣い管理
-// 依存なしのバニラJS。データは localStorage に保存。
+// キチE��ぽけっと�E�お小遣ぁE��琁E
+// 依存なし�EバニラJS。データは localStorage に保存、E
 
 (function(){
   const LS_KEY = 'kid-allowance-v1';
@@ -17,7 +17,7 @@
     chores: [
       { id: id(), name:'ベッドをととのえる', reward:100, lastDone:'' },
       { id: id(), name:'しょるいをかたづける', reward:100, lastDone:'' },
-      { id: id(), name:'しょくだい', reward:150, lastDone:'' },
+      { id: id(), name:'しょくだぁE, reward:150, lastDone:'' },
     ],
   });
 
@@ -33,6 +33,17 @@ function format(n){
     return sign + v.toLocaleString('ja-JP');
   }
 function money(n){ return `${state.currency}${format(n)}` }
+// Robust available-balance: prefer local compute, but fall back to displayed text if larger
+function availableBalance(){
+  try{
+    let local = Number(computeBalance()||0);
+    if(!Number.isFinite(local)) local = 0;
+    let shown = NaN;
+    try{ const t = (document.getElementById('balance')||{}).textContent || ''; shown = parseAmount(String(t)); }catch{}
+    if(Number.isFinite(shown)) return Math.max(local, shown);
+    return local;
+  }catch{ return 0 }
+}
 function save(){
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   mirrorToProfile();
@@ -43,7 +54,7 @@ function save(){
 function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY) || ''); }catch{ return null } }
 function seed(){
     const st = initialState();
-    st.childName = 'なまえ';
+    st.childName = 'なまぁE;
     st.transactions = [
       { id:id(), type:'income', amount:300, note:'はじめてのおこづかい', dateISO:new Date().toISOString() },
       { id:id(), type:'expense', amount:120, note:'おやつ', dateISO:new Date().toISOString() },
@@ -71,7 +82,7 @@ function computeBalance(){
       let meta = JSON.parse(localStorage.getItem(META_KEY) || '');
       if(!meta || !Array.isArray(meta.profiles) || !meta.profiles.length){
         const id = idGen();
-        meta = { profiles:[{ id, name:'なまえ' }], currentId:id };
+        meta = { profiles:[{ id, name:'なまぁE }], currentId:id };
         const st = load() || initialState();
         localStorage.setItem(pidKey(id), JSON.stringify(st));
         localStorage.setItem(META_KEY, JSON.stringify(meta));
@@ -81,18 +92,17 @@ function computeBalance(){
       const id = idGen();
       const st = load() || initialState();
       localStorage.setItem(pidKey(id), JSON.stringify(st));
-      const meta = { profiles:[{ id, name:'なまえ' }], currentId:id };
+      const meta = { profiles:[{ id, name:'なまぁE }], currentId:id };
       localStorage.setItem(META_KEY, JSON.stringify(meta));
       return meta;
     }
   }
   let META = ensureMeta();
-  // goals 用のローカルキャッシュキー（プロフィールID固有）
+  // goals 用のローカルキャチE��ュキー�E��EロフィールID固有！E
   function goalsCacheKey(){
     try{ return 'kids-allowance:goals:' + (META && META.currentId ? META.currentId : 'default'); }catch{ return 'kids-allowance:goals:default'; }
   }
-  // goals のローカルミラーとイベント通知（起動時のキャッシュ上書きを防ぐため）
-  function mirrorGoalsCache(){
+  // goals のローカルミラーとイベント通知�E�起動時のキャチE��ュ上書きを防ぐためE��E  function mirrorGoalsCache(){
     try{
       const arr = Array.isArray(state.goals) ? state.goals : [];
       localStorage.setItem(goalsCacheKey(), JSON.stringify(arr));
@@ -170,10 +180,10 @@ function renderHome(){
     const recent = [...state.transactions].sort((a,b)=>b.dateISO.localeCompare(a.dateISO)).slice(0,6);
     const ul = $('#recentList');
     ul.innerHTML = '';
-    if(recent.length===0){ ul.innerHTML = '<li>まだないよ</li>'; }
+    if(recent.length===0){ ul.innerHTML = '<li>まだなぁE��</li>'; }
     recent.forEach(t=>{
       const li = document.createElement('li');
-      const icon = t.type==='income' || t.type==='chore' ? '＋' : '−';
+      const icon = t.type==='income' || t.type==='chore' ? '�E�E : '∁E;
       const col = t.type==='income' || t.type==='chore' ? 'good' : 'bad';
       li.innerHTML = `
         <div>
@@ -196,7 +206,7 @@ function renderHome(){
       const amount = parseAmount($('#quickAmount').value);
       const note = $('#quickNote').value.trim();
       if(!validAmount(amount)) return toast('金額を正しく入れてね');
-      if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
+      if(amount >= 10000 && !confirm(`金額が ${money(amount)} になってぁE��す。よろしぁE��すか�E�`)) return;
       addTx(type, amount, note || labelForType(type), true);
       $('#quickAmount').value = '';
       $('#quickNote').value = '';
@@ -209,7 +219,7 @@ function renderTransactions(){
       list.innerHTML = '';
       let items = [...state.transactions].sort((a,b)=>b.dateISO.localeCompare(a.dateISO));
       if(filter.value!=='all') items = items.filter(t=>t.type===filter.value);
-      if(items.length===0){ list.innerHTML = '<li>まだないよ</li>'; return; }
+      if(items.length===0){ list.innerHTML = '<li>まだなぁE��</li>'; return; }
       items.forEach(t=>{
         const li = document.createElement('li');
         const isPlus = t.type==='income' || t.type==='chore';
@@ -218,7 +228,7 @@ function renderTransactions(){
             <div class="note">${escapeHtml(t.note||labelForType(t.type))}</div>
             <div class="meta">${dateJa(t.dateISO)}</div>
           </div>
-          <div class="amount ${isPlus?'good':'bad'}">${isPlus?'+':'−'}${money(t.amount)}</div>
+          <div class="amount ${isPlus?'good':'bad'}">${isPlus?'+':'∁E}${money(t.amount)}</div>
         `;
         const delBtn = document.createElement('button');
         delBtn.className = 'btn danger tx-del';
@@ -234,19 +244,19 @@ function renderTransactions(){
     filter.onchange = paint;
 
     $('#addTransactionBtn').onclick = ()=> openModal($('#txDialog'));
-    // 一括削除ボタン（表示中の絞り込み対象を削除）
+    // 一括削除ボタン�E�表示中の絞り込み対象を削除�E�E
     (function(){
       const addBtn = $('#addTransactionBtn');
       if(!addBtn) return;
       if(document.getElementById('bulkDeleteBtn')) return;
       const b = document.createElement('button');
-      b.id='bulkDeleteBtn'; b.className='btn danger'; b.style.marginLeft='8px'; b.textContent='一括削除(表示分)';
+      b.id='bulkDeleteBtn'; b.className='btn danger'; b.style.marginLeft='8px'; b.textContent='一括削除(表示刁E';
       if(addBtn.parentElement) addBtn.parentElement.appendChild(b);
       b.onclick = ()=>{
         let items = [...state.transactions].sort((a,b)=>b.dateISO.localeCompare(a.dateISO));
         const f = $('#filterType'); if(f && f.value!=='all') items = items.filter(t=>t.type===f.value);
         if(items.length===0){ toast('削除対象がありません'); return; }
-        if(!confirm(`${items.length}件を一括削除します。よろしいですか？`)) return;
+        if(!confirm(`${items.length}件を一括削除します。よろしぁE��すか�E�`)) return;
         let delSet = _loadDeletedSet();
         const ids = new Set();
         items.forEach(t=>{ delSet.add(_fp(t.type,t.amount,t.note)); ids.add(t.id); });
@@ -261,7 +271,7 @@ function renderTransactions(){
       const amount = parseAmount($('#txAmount').value);
       const note = $('#txNote').value.trim();
       if(!validAmount(amount)) return toast('金額を正しく入れてね');
-      if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
+      if(amount >= 10000 && !confirm(`金額が ${money(amount)} になってぁE��す。よろしぁE��すか�E�`)) return;
       addTx(type, amount, note || labelForType(type), true);
       closeModal($('#txDialog'));
       e.target.reset();
@@ -274,7 +284,7 @@ function renderGoals(){
     if(state.goals.length===0){
       const empty = document.createElement('div');
       empty.className='card';
-      empty.textContent = 'まだもくひょうがないよ。つくってみよう！';
+      empty.textContent = 'まだもくひめE��がなぁE��。つくってみよう�E�E;
       wrap.appendChild(empty);
     } else {
       state.goals.forEach(g=>{
@@ -289,7 +299,7 @@ function renderGoals(){
             <div class="goal-name">${escapeHtml(g.name)}</div>
             <div class="meta">${money(g.saved)} / ${money(g.target)}</div>
             <div class="goal-actions">
-              <button class="btn primary" data-act="save">ちょきんする</button>
+              <button class="btn primary" data-act="save">ちめE��んすめE/button>
               <button class="btn" data-act="edit">変更</button>
               <button class="btn danger" data-act="delete">けす</button>
             </div>
@@ -303,10 +313,10 @@ function renderGoals(){
         delBtn.onclick = ()=> deleteGoal(g);
 
         if(g.saved >= g.target){
-          // 完了バッジ
+          // 完亁E��チE��
           const done = document.createElement('div');
           done.className = 'meta';
-          done.textContent = 'おめでとう！ もくひょう たっせい！';
+          done.textContent = 'おめでとぁE��EもくひめE�� たっせい�E�E;
           card.appendChild(done);
         }
       });
@@ -317,8 +327,8 @@ function renderGoals(){
     e.preventDefault();
     const name = $('#goalName').value.trim();
     const target = parseAmount($('#goalTarget').value);
-    if(!name) return toast('なまえをいれてね');
-    if(!validAmount(target)) return toast('目標金額を正しく入れてね');
+    if(!name) return toast('なまえをぁE��てね');
+    if(!validAmount(target)) return toast('目標��額を正しく入れてね');
     state.goals.push({ id:id(), name, target, saved:0 });
     save(); try{ mirrorGoalsCache(); }catch{}
     closeModal($('#goalDialog'));
@@ -326,18 +336,18 @@ function renderGoals(){
     renderGoals();
   };
   }
-  // ===== Savings (ちょきん確認・戻す) =====
+  // ===== Savings (ちめE��ん確認�E戻ぁE =====
   function renderSavings(){
     const wrap = document.getElementById('savingsList');
     const sumEl = document.getElementById('savingsSummary');
     if(!wrap || !sumEl) return;
     wrap.innerHTML = '';
     const total = (state.goals||[]).reduce((s,g)=> s + Math.max(0, Math.round(Number(g.saved)||0)), 0);
-    sumEl.textContent = `合計: ${money(total)}`;
+    sumEl.textContent = `合訁E ${money(total)}`;
     const goals = (state.goals||[]).filter(g => (Math.round(Number(g.saved)||0)) > 0);
     if(goals.length===0){
       const li = document.createElement('li');
-      li.textContent = 'まだ ちょきん はないよ';
+      li.textContent = 'まだ ちめE��めEはなぁE��';
       wrap.appendChild(li);
       return;
     }
@@ -346,11 +356,11 @@ function renderGoals(){
       li.innerHTML = `
         <div>
           <div class="note">${escapeHtml(g.name)}</div>
-          <div class="meta">いまの ちょきん: ${money(Math.round(Number(g.saved)||0))}</div>
+          <div class="meta">ぁE��の ちめE��めE ${money(Math.round(Number(g.saved)||0))}</div>
         </div>
         <div class="goal-actions">
-          <button class="btn" data-act="part">すこし もどす</button>
-          <button class="btn danger" data-act="all">ぜんぶ もどす</button>
+          <button class="btn" data-act="part">すこぁEもどぁE/button>
+          <button class="btn danger" data-act="all">ぜんぶ もどぁE/button>
         </div>
       `;
       wrap.appendChild(li);
@@ -362,18 +372,18 @@ function renderGoals(){
   function withdrawFromGoal(goal, all=false){
     try{
       const cur = Math.max(0, Math.round(Number(goal.saved)||0));
-      if(cur<=0) return toast('この もくひょう に ちょきん はないよ');
+      if(cur<=0) return toast('こ�E もくひめE�� に ちめE��めEはなぁE��');
       let amount = cur;
       if(!all){
-        const val = prompt(`いくら もどす？（最大 ${money(cur)}）`, Math.min(300, cur).toString());
+        const val = prompt(`ぁE��めEもどす？（最大 ${money(cur)}�E�`, Math.min(300, cur).toString());
         amount = parseAmount(val||'');
         if(!validAmount(amount)) return;
-        if(amount > cur) return toast('ちょきん より おおいよ');
-        if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
+        if(amount > cur) return toast('ちめE��めEより おおぁE��');
+        if(amount >= 10000 && !confirm(`金額が ${money(amount)} になってぁE��す。よろしぁE��すか�E�`)) return;
       }
       amount = sanitizeAmount(amount);
       goal.saved = sanitizeAmount(cur - amount);
-      addTx('income', amount, `もどす: ${goal.name}`);
+      addTx('income', amount, `もどぁE ${goal.name}`);
       save(); mirrorGoalsCache();
       renderGoals();
       renderSavings();
@@ -387,7 +397,7 @@ function renderChores(){
     ul.innerHTML = '';
     if (!Array.isArray(state.chores) || state.chores.length === 0) {
       const li = document.createElement('li');
-      li.textContent = 'まだないよ';
+      li.textContent = 'まだなぁE��';
       ul.appendChild(li);
       return;
     }
@@ -401,17 +411,17 @@ function renderChores(){
       note.textContent = ch.name;
       const meta = document.createElement('div');
       meta.className = 'meta';
-      meta.textContent = 'ごほうび: ' + money(ch.reward) + (doneToday ? '（きょうはOK）' : '');
+      meta.textContent = 'ごほぁE�E: ' + money(ch.reward) + (doneToday ? '�E�きめE��はOK�E�E : '');
       left.appendChild(note);
       left.appendChild(meta);
       const btn = document.createElement('button');
       btn.className = 'btn good';
-      btn.textContent = 'やった！';
+      btn.textContent = 'めE��た！E;
       if (doneToday) btn.disabled = true;
       btn.onclick = () => {
         if (ch.lastDone === today()) return;
         ch.lastDone = today();
-        addTx('chore', ch.reward, 'おてつだい ' + ch.name, true);
+        addTx('chore', ch.reward, 'おてつだぁE' + ch.name, true);
         save();
         renderChores();
       };
@@ -444,29 +454,29 @@ function renderSettings(){
 
   // Reset
   $("#resetData").onclick = ()=>{
-    if(confirm('データを初期化します。本当によろしいですか？')){
+    if(confirm('チE�Eタを�E期化します。本当によろしいですか�E�E)){
       localStorage.removeItem(LS_KEY);
       state = seed();
       renderAll();
-      toast('リセットしました');
+      toast('リセチE��しました');
     }
   };
 
   // Export / Import
   $("#exportData").onclick = async ()=>{
     const json = JSON.stringify(state, null, 2);
-    $("#ioTitle").textContent = 'エクスポート';
-    $("#ioOk").textContent = 'コピー';
+    $("#ioTitle").textContent = 'エクスポ�EチE;
+    $("#ioOk").textContent = 'コピ�E';
     $("#ioText").value = json;
     openModal($("#ioDialog"));
     $("#ioOk").onclick = (ev)=>{
       ev.preventDefault();
-      try{ navigator.clipboard.writeText($("#ioText").value); toast('クリップボードにコピーしました'); }catch{ toast('コピーできない時は手動で選択してください'); }
+      try{ navigator.clipboard.writeText($("#ioText").value); toast('クリチE�Eボ�Eドにコピ�Eしました'); }catch{ toast('コピ�EできなぁE��は手動で選択してください'); }
       closeModal($("#ioDialog"));
     };
   };
   $("#importData").onclick = ()=>{
-    $("#ioTitle").textContent = 'インポート';
+    $("#ioTitle").textContent = 'インポ�EチE;
     $("#ioOk").textContent = '読み込み';
     $("#ioText").value = '';
     openModal($("#ioDialog"));
@@ -478,7 +488,7 @@ function renderSettings(){
         state = { ...initialState(), ...obj };
         save();
         renderAll();
-        toast('インポートしました');
+        toast('インポ�Eトしました');
         closeModal($("#ioDialog"));
       }catch{ toast('JSONを確認してください'); }
     };
@@ -501,24 +511,24 @@ function renderSettings(){
       function refreshSelect(){
         sel.innerHTML = '';
         (META && META.profiles || []).forEach(p=>{
-          const o=document.createElement('option'); o.value=p.id; o.textContent=p.name||'なまえ'; if(p.id===META.currentId) o.selected=true; sel.appendChild(o);
+          const o=document.createElement('option'); o.value=p.id; o.textContent=p.name||'なまぁE; if(p.id===META.currentId) o.selected=true; sel.appendChild(o);
         });
       }
       refreshSelect();
       sel.onchange = ()=>{ if(sel.value) switchProfile(sel.value); };
       addBtn.onclick = ()=>{
-        const name = prompt('なまえ'); if(!name) return;
+        const name = prompt('なまぁE); if(!name) return;
         const id = idGen(); META.profiles.push({id,name}); META.currentId=id; localStorage.setItem(META_KEY, JSON.stringify(META));
         state = initialState(); state.childName = name; save(); renderAll();
       };
       renBtn.onclick = ()=>{
         const p = META.profiles.find(x=>x.id===META.currentId); if(!p) return;
-        const name = prompt('なまえ', p.name)||p.name; p.name=name; localStorage.setItem(META_KEY, JSON.stringify(META)); refreshSelect();
+        const name = prompt('なまぁE, p.name)||p.name; p.name=name; localStorage.setItem(META_KEY, JSON.stringify(META)); refreshSelect();
         state.childName = name; save(); renderHeader();
       };
       delBtn.onclick = ()=>{
-        if(META.profiles.length<=1){ alert('最低1名必要です'); return; }
-        if(!confirm('このひとを削除しますか？')) return;
+        if(META.profiles.length<=1){ alert('最佁E名忁E��でぁE); return; }
+        if(!confirm('こ�Eひとを削除しますか�E�E)) return;
         const cur=META.currentId; META.profiles = META.profiles.filter(x=>x.id!==cur);
         try{ localStorage.removeItem(pidKey(cur)); }catch{}
         META.currentId = META.profiles[0].id; localStorage.setItem(META_KEY, JSON.stringify(META));
@@ -540,24 +550,24 @@ function renderSettings(){
     }
   }
 
-  // 取引の削除（さくじょ）
+  // 取引�E削除�E�さくじめE��E
   function deleteTx(id){
     try{
       const idx = (state.transactions||[]).findIndex(t=>t.id===id);
       if(idx < 0) return;
-      if(!confirm('この記録を削除しますか？')) return;
-      // 変更を確定
+      if(!confirm('こ�E記録を削除しますか�E�E)) return;
+      // 変更を確宁E
       const next = [...state.transactions];
       next.splice(idx,1);
       state.transactions = next;
-      // ローカル保存を強制（LS_KEY と profile の両方）
+      // ローカル保存を強制�E�ES_KEY と profile の両方�E�E
       try {
         localStorage.setItem(LS_KEY, JSON.stringify(state));
         if (typeof META !== 'undefined' && META && META.currentId) {
           localStorage.setItem(pidKey(META.currentId), JSON.stringify(state));
         }
       } catch (_) {}
-      // 直後にストレージから読み直してメモリと表示を同期
+      // 直後にストレージから読み直してメモリと表示を同朁E
       try {
         const fresh = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
         if (fresh && typeof fresh === 'object') state = fresh;
@@ -569,47 +579,47 @@ function renderSettings(){
   }
   function contributeToGoal(goal){
     // Use a safe computed balance; avoid transient zero state
-    let max = Number(computeBalance()||0);
+    let max = availableBalance();
     if(!Number.isFinite(max)) max = 0;
     if(max <= 0){
       // If transactions exist but balance is non-negative after rounding, allow
       const approx = Math.round(max);
       if(approx <= 0 && (state.transactions||[]).length===0){
-        return toast('まずはおこづかいをためよう！');
+        return toast('まず�EおこづかいをためよぁE��E);
       }
     }
-    const val = prompt(`いくらちょきんする？（最大 ${money(max)}）`, Math.min(300, max).toString());
+    const val = prompt(`ぁE��らちめE��んする？（最大 ${money(max)}�E�`, Math.min(300, max).toString());
     const amount = parseAmount(val||'');
     if(!validAmount(amount)) return;
-    if(amount > max) return toast('ざんだかよりおおいよ');
-    if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
+    if(amount > max) return toast('ざんだかよりおおいめE);
+    if(amount >= 10000 && !confirm(`金額が ${money(amount)} になってぁE��す。よろしぁE��すか�E�`)) return;
     goal.saved = Math.round(Number(goal.saved)||0) + Math.round(Number(amount)||0);
-    addTx('goal', amount, `ちょきん: ${goal.name}`);
+    addTx('goal', amount, `ちめE��めE ${goal.name}`);
     save(); mirrorGoalsCache();
-    // 反映: もくひょう と ちょきん の両方を再描画
+    // 反映: もくひめE�� と ちめE��めEの両方を�E描画
     renderGoals();
     renderSavings();
     if(goal.saved >= goal.target){
       confetti();
-      toast('おめでとう！ もくひょう たっせい！');
+      toast('おめでとぁE��EもくひめE�� たっせい�E�E);
     }
   }
 function editGoal(goal){
-    const name = prompt('なまえ', goal.name)||goal.name;
-    const target = parseAmount(prompt('目標金額', String(goal.target))||String(goal.target));
-    if(!validAmount(target)) return toast('目標金額を正しく入れてね');
+    const name = prompt('なまぁE, goal.name)||goal.name;
+    const target = parseAmount(prompt('目標��顁E, String(goal.target))||String(goal.target));
+    if(!validAmount(target)) return toast('目標��額を正しく入れてね');
     goal.name = name.trim()||goal.name;
     goal.target = target;
     save(); mirrorGoalsCache();
     renderGoals();
   }
 function deleteGoal(goal){
-    if(!confirm('もくひょうをけしますか？')) return;
+    if(!confirm('もくひめE��をけしますか�E�E)) return;
     state.goals = state.goals.filter(g=>g.id!==goal.id);
     // Refund saved amount back to balance as income
     try{
       const __refund = Math.max(0, Math.round(Number(goal && goal.saved) || 0));
-      if(__refund > 0){ addTx('income', __refund, `もどす: ${goal.name}`, true); }
+      if(__refund > 0){ addTx('income', __refund, `もどぁE ${goal.name}`, true); }
     }catch{}
     save(); mirrorGoalsCache();
     renderGoals();
@@ -679,9 +689,9 @@ function applyTheme(){
   }
 function getAvatarChoices(){
     if(state.theme==='adventure'){
-      return ['🚀','🛸','🤖','🦖','🛰️','⚽','🎮','🧭','🛡️','🗡️','🧱','🐲'];
+      return ['🚀','🛸','🤁E,'🦁E,'🛰�E�E,'⚽','🎮','🧭','🛡�E�E,'🗡�E�E,'🧱','🐲'];
     }
-    return ['🐻','🐱','🐯','🐰','🐼','🦊','🐨','🦄','🐣','🐵','🐶','🐸'];
+    return ['🐻','🐱','🐯','🐰','🐼','🦁E,'🐨','🦁E,'🐣','🐵','🐶','🐸'];
   }
 function dateJa(iso){
     try{
@@ -693,18 +703,18 @@ function dateJa(iso){
     }catch{ return '' }
   }
 function labelForType(type){
-    return type==='income' ? 'おこづかい' : type==='expense' ? 'おかいもの' : type==='goal' ? 'ちょきん' : 'おてつだい';
+    return type==='income' ? 'おこづかい' : type==='expense' ? 'おかぁE��の' : type==='goal' ? 'ちめE��めE : 'おてつだぁE;
   }
-// 入力金額の安全なパース（小数や全角・通貨記号を考慮）
+// 入力��額�E安�Eなパ�Eス�E�小数めE�E角�E通貨記号を老E�E�E�E
 function toHalfWidthDigits(s){
-    return String(s||'').replace(/[０-９]/g, c=> String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+    return String(s||'').replace(/[�E�E�E�]/g, c=> String.fromCharCode(c.charCodeAt(0)-0xFEE0));
 }
 function parseAmount(v){
     v = toHalfWidthDigits(v);
     if(typeof v !== 'string') v = String(v||'');
-    v = v.trim().replace(/[¥￥$,\s]/g,''); // 通貨・カンマ・空白を除去
-    // 小数セパレータが含まれる場合は整数部のみ採用（100.50 -> 100）
-    const intPart = v.split(/[\.｡､，．]/)[0].replace(/[^0-9]/g,'');
+    v = v.trim().replace(/[¥�E�$,\s]/g,''); // 通貨・カンマ�E空白を除去
+    // 小数セパレータが含まれる場合�E整数部のみ採用�E�E00.50 -> 100�E�E
+    const intPart = v.split(/[\.�E��E��E�．]/)[0].replace(/[^0-9]/g,'');
     const n = intPart ? parseInt(intPart,10) : 0;
     return Number.isFinite(n) ? n : 0;
 }
@@ -861,8 +871,7 @@ try{
         target: Math.round(Number(g && g.target) || 0),
         saved: Math.round(Number(g && g.saved) || 0)
       })) : [];
-      // If incoming is empty and既存にゴールがあれば保持（空で上書きしない）
-      if(arr.length===0 && Array.isArray(state.goals) && state.goals.length>0){
+      // If incoming is empty and既存にゴールがあれ�E保持�E�空で上書きしなぁE��E      if(arr.length===0 && Array.isArray(state.goals) && state.goals.length>0){
         return; // ignore empty update
       }
       // Replace entire goals list
@@ -910,17 +919,17 @@ try{
     row.id='syncIdRow'; row.className='field-row'; row.style.marginTop='8px';
     const label = document.createElement('label'); label.textContent = '同期ID';
     const disp = document.createElement('input'); disp.id='syncIdDisplay'; disp.readOnly=true; disp.style.minWidth='160px'; disp.value = (META && META.currentId) || '';
-    const copyBtn = document.createElement('button'); copyBtn.className='btn'; copyBtn.textContent='コピー';
+    const copyBtn = document.createElement('button'); copyBtn.className='btn'; copyBtn.textContent='コピ�E';
     const applyInput = document.createElement('input'); applyInput.id='syncIdInput'; applyInput.placeholder='貼り付けて適用'; applyInput.style.minWidth='160px';
     const applyBtn = document.createElement('button'); applyBtn.className='btn'; applyBtn.textContent='適用';
     row.appendChild(label); row.appendChild(disp); row.appendChild(copyBtn); row.appendChild(applyInput); row.appendChild(applyBtn);
     card.appendChild(row);
-    copyBtn.onclick = ()=>{ try{ navigator.clipboard.writeText(disp.value); toast('コピーしました'); }catch{ toast('コピーできませんでした'); } };
+    copyBtn.onclick = ()=>{ try{ navigator.clipboard.writeText(disp.value); toast('コピ�Eしました'); }catch{ toast('コピ�Eできませんでした'); } };
     applyBtn.onclick = ()=>{
-      const id = (applyInput.value||'').trim(); if(!id){ toast('IDを入力してください'); return; }
+      const id = (applyInput.value||'').trim(); if(!id){ toast('IDを�E力してください'); return; }
       try{
         if(!(META.profiles||[]).some(p=>p.id===id)){
-          META.profiles = (META.profiles||[]); META.profiles.push({ id, name: state.childName||'なまえ' });
+          META.profiles = (META.profiles||[]); META.profiles.push({ id, name: state.childName||'なまぁE });
         }
         META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
         const st = loadProfileToActive(id) || initialState(); state = st; renderAll(); toast('同期IDを適用しました');
@@ -933,16 +942,16 @@ try{
       if (u.get('debug') === '1') {
         const dbgRow = document.createElement('div');
         dbgRow.className = 'field-row';
-        const btn = document.createElement('button'); btn.className='btn'; btn.textContent='デバッグ: もくひょう反映';
+        const btn = document.createElement('button'); btn.className='btn'; btn.textContent='チE��チE��: もくひめE��反映';
         btn.onclick = ()=>{
           try{
             const raw = localStorage.getItem(goalsCacheKey());
             const g = raw ? JSON.parse(raw) : [];
             if(typeof window.kidsAllowanceApplyGoals === 'function'){
               window.kidsAllowanceApplyGoals(Array.isArray(g)?g:[]);
-              toast('もくひょうを反映しました');
+              toast('もくひめE��を反映しました');
             } else {
-              toast('applyGoals が未定義です');
+              toast('applyGoals が未定義でぁE);
             }
           }catch(e){ console.warn(e); toast('反映に失敗しました'); }
         };
@@ -971,14 +980,14 @@ try{
       if(idx < 0) return;
       const delTx = state.transactions[idx];
       if (delTx){ const s=_loadDeletedSet(); s.add(_fp(delTx.type, delTx.amount, delTx.note)); _saveDeletedSet(s); }
-      if(!confirm('この記録を削除しますか？')) return;
+      if(!confirm('こ�E記録を削除しますか�E�E)) return;
       const next = [...state.transactions]; next.splice(idx,1); state.transactions = next;
       try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); if(META&&META.currentId){ localStorage.setItem(pidKey(META.currentId), JSON.stringify(state)); } }catch{}
       try{ const fresh = JSON.parse(localStorage.getItem(LS_KEY)||'null'); if(fresh&&typeof fresh==='object') state=fresh; }catch{}
       try{ const b=document.getElementById('balance'); if(b) b.textContent = money(computeBalance()); }catch{}
       renderTransactions(); renderHome();
 
-      // Undo 機能: 一時的に元データを保持
+      // Undo 機�E: 一時的に允E��ータを保持
       _lastDeletedTx = delTx ? { ...delTx } : null;
       if(_undoTimer) { clearTimeout(_undoTimer); _undoTimer=null; }
       toastAction('削除しました', '取り消す', ()=>{
