@@ -598,7 +598,12 @@ function editGoal(goal){
 function deleteGoal(goal){
     if(!confirm('もくひょうをけしますか？')) return;
     state.goals = state.goals.filter(g=>g.id!==goal.id);
-    save();
+    // Refund saved amount back to balance as income
+    try{
+      const __refund = Math.max(0, Math.round(Number(goal && goal.saved) || 0));
+      if(__refund > 0){ addTx('income', __refund, `もどす: ${goal.name}`, true); }
+    }catch{}
+    save(); mirrorGoalsCache();
     renderGoals();
   }
 
