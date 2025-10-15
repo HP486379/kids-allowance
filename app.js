@@ -91,6 +91,14 @@ function computeBalance(){
   function goalsCacheKey(){
     try{ return 'kids-allowance:goals:' + (META && META.currentId ? META.currentId : 'default'); }catch{ return 'kids-allowance:goals:default'; }
   }
+  // goals のローカルミラーとイベント通知（起動時のキャッシュ上書きを防ぐため）
+  function mirrorGoalsCache(){
+    try{
+      const arr = Array.isArray(state.goals) ? state.goals : [];
+      localStorage.setItem(goalsCacheKey(), JSON.stringify(arr));
+      try{ window.dispatchEvent(new CustomEvent('goalsUpdated', { detail: arr })); }catch(_){ }
+    }catch(_){ }
+  }
   function mirrorToProfile(){
     try{ if(META && META.currentId){ localStorage.setItem(pidKey(META.currentId), JSON.stringify(state)); } }catch{}
   }
@@ -366,7 +374,7 @@ function renderGoals(){
       amount = sanitizeAmount(amount);
       goal.saved = sanitizeAmount(cur - amount);
       addTx('income', amount, `もどす: ${goal.name}`);
-      save();
+      save(); mirrorGoalsCache();
       renderGoals();
       renderSavings();
       renderHome();
@@ -522,7 +530,7 @@ function renderSettings(){
   function addTx(type, amount, note, animateCoin=false){
     const t = { id:id(), type, amount:sanitizeAmount(amount), note, dateISO:new Date().toISOString() };
     state.transactions.push(t);
-    save();
+    save(); mirrorGoalsCache();
     try{ if(window.kidsAllowanceAddTx) window.kidsAllowanceAddTx(t); }catch{}
     document.getElementById('balance').textContent = money(computeBalance()); try{ if(window.kidsAllowanceUpdateBalance) window.kidsAllowanceUpdateBalance(state); }catch{}
     renderHome();
@@ -567,9 +575,9 @@ function renderSettings(){
     if(!validAmount(amount)) return;
     if(amount > max) return toast('ざんだかよりおおいよ');
     if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
-    goal.saved += amount;
+    goal.saved = Math.round(Number(goal.saved)||0) + Math.round(Number(amount)||0);
     addTx('goal', amount, `ちょきん: ${goal.name}`);
-    save();
+    save(); mirrorGoalsCache();
     // 反映: もくひょう と ちょきん の両方を再描画
     renderGoals();
     renderSavings();
@@ -584,7 +592,7 @@ function editGoal(goal){
     if(!validAmount(target)) return toast('目標金額を正しく入れてね');
     goal.name = name.trim()||goal.name;
     goal.target = target;
-    save();
+    save(); mirrorGoalsCache();
     renderGoals();
   }
 function deleteGoal(goal){
