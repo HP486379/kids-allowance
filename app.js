@@ -559,7 +559,7 @@ function renderSettings(){
       renderHome();
     } catch(_) {}
   }
-function contributeToGoal(goal){
+  function contributeToGoal(goal){
     const max = computeBalance();
     if(max<=0) return toast('まずはおこづかいをためよう！');
     const val = prompt(`いくらちょきんする？（最大 ${money(max)}）`, Math.min(300, max).toString());
@@ -570,7 +570,9 @@ function contributeToGoal(goal){
     goal.saved += amount;
     addTx('goal', amount, `ちょきん: ${goal.name}`);
     save();
+    // 反映: もくひょう と ちょきん の両方を再描画
     renderGoals();
+    renderSavings();
     if(goal.saved >= goal.target){
       confetti();
       toast('おめでとう！ もくひょう たっせい！');
