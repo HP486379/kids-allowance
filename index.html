@@ -40,7 +40,7 @@
 
       <nav class="tabs" role="tablist">
         <button class="tab active" data-tab="home" role="tab" aria-selected="true">ホーム</button>
-        <button class="tab" data-tab="transactions" role="tab">おこづかい</button>
+        <button class="tab" data-tab="transactions" role="tab">イベント</button>
         <button class="tab" data-tab="goals" role="tab">もくひょう</button>
         <button class="tab" data-tab="savings" role="tab">ちょきん</button>
         <button class="tab" data-tab="chores" role="tab">おてつだい</button>
@@ -220,7 +220,7 @@
             var name=document.getElementById('childName'); if(name) name.placeholder='なまえをいれてね';
             setText('.balance-label','いまのざんだか');
             // タブ
-            var tabText={home:'ホーム',transactions:'おこづかい',goals:'もくひょう',savings:'ちょきん',chores:'おてつだい',settings:'せってい'};
+            var tabText={home:'ホーム',transactions:'イベント',goals:'もくひょう',savings:'ちょきん',chores:'おてつだい',settings:'せってい'};
             Object.keys(tabText).forEach(function(k){ var el=document.querySelector('nav.tabs button[data-tab="'+k+'"]'); if(el) el.textContent=tabText[k]; });
             // クイック
             setText('#quickAdd100','+100'); setText('#quickAdd300','+300'); var qs=document.getElementById('quickSnack'); if(qs) qs.textContent='-150 おやつ';
