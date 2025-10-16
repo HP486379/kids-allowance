@@ -187,7 +187,9 @@ body.theme-adventure{
 .dialog-actions{ display:flex; gap:8px; justify-content:flex-end }
 
 /* Dialog fallback for browsers without <dialog> */
-body.modal-open::after{ content:""; position:fixed; inset:0; background:#0006; z-index:1000; }
+/* Fallback overlay for browsers without <dialog>.
+   Never block clicks behind it to avoid stuck-UI issues. */
+body.modal-open::after{ content:""; position:fixed; inset:0; background:#0006; z-index:1000; pointer-events:none; }
 .dialog.open{ display:block; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:1001; background:#fff; }
 .dialog.open .form{ min-width:300px; }
 
