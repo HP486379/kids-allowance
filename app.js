@@ -36,6 +36,7 @@ function money(n){ return `${state.currency}${format(n)}` }
 function save(){
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   mirrorToProfile();
+  mirrorGoalsCache();
   try {
     if (window.kidsAllowanceSync) window.kidsAllowanceSync(state);
   } catch (_) {}
@@ -87,9 +88,13 @@ function computeBalance(){
     }
   }
   let META = ensureMeta();
+  mirrorGoalsCache();
   // goals 用のローカルキャッシュキー（プロフィールID固有）
   function goalsCacheKey(){
     try{ return 'kids-allowance:goals:' + (META && META.currentId ? META.currentId : 'default'); }catch{ return 'kids-allowance:goals:default'; }
+  }
+  function mirrorGoalsCache(){
+    try{ localStorage.setItem(goalsCacheKey(), JSON.stringify(state.goals||[])); }catch{}
   }
   function mirrorToProfile(){
     try{ if(META && META.currentId){ localStorage.setItem(pidKey(META.currentId), JSON.stringify(state)); } }catch{}
@@ -105,6 +110,7 @@ function computeBalance(){
   function switchProfile(id){
     try{
       mirrorToProfile();
+      mirrorGoalsCache();
       const st = loadProfileToActive(id) || initialState();
       META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
       state = st; renderAll();
