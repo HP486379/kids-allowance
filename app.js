@@ -1048,3 +1048,15 @@ try{
     document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ try{ document.querySelectorAll('dialog[open]').forEach(d=>{ try{ d.close(); }catch{} }); document.body.classList.remove('modal-open'); }catch{} } }, { capture:true });
   }catch{}
 })();
+// Extra safety: remove 'inert' from any element repeatedly to unblock clicks
+(function(){
+  try{
+    let n=0; const tid = setInterval(()=>{
+      try{
+        document.querySelectorAll('[inert]').forEach(el=>{ try{ el.removeAttribute('inert'); if('inert' in el) el.inert=false; }catch{} });
+        ['html','body','#app'].forEach(sel=>{ const el = document.querySelector(sel); if(el){ try{ if('inert' in el) el.inert=false; el.removeAttribute && el.removeAttribute('inert'); }catch{} } });
+      }catch{}
+      if(++n>=10) clearInterval(tid);
+    }, 400);
+  }catch{}
+})();
