@@ -125,7 +125,7 @@ function computeBalance(){
       mirrorToProfile();
       const st = loadProfileToActive(id) || initialState();
       META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
-      state = st; renderAll();\n  try{ if(!document.querySelector('.dialog.open')) document.body.classList.remove('modal-open'); }catch{}
+      state = st; renderAll();\n  try{ if(!document.querySelector('.dialog.open')) document\.body\.classList\.remove\('modal-open'\);\ }catch\{}\n\ \ try\{\ document\.querySelectorAll\('dialog\[open]'\)\.forEach\(d=>\{\ try\{\ d\.close\(\);\ }catch\{}\ }\);\ document\.querySelectorAll\('\.dialog\.open'\)\.forEach\(d=>\ d\.classList\.remove\('open'\)\);\ }catch\{}
     }catch{}
   }// ----- Rendering -----
   function renderAll(){
@@ -457,7 +457,7 @@ function renderSettings(){
     if(confirm('チE�Eタを�E期化します。本当によろしいですか�E�E)){
       localStorage.removeItem(LS_KEY);
       state = seed();
-      renderAll();\n  try{ if(!document.querySelector('.dialog.open')) document.body.classList.remove('modal-open'); }catch{}
+      renderAll();\n  try{ if(!document.querySelector('.dialog.open')) document\.body\.classList\.remove\('modal-open'\);\ }catch\{}\n\ \ try\{\ document\.querySelectorAll\('dialog\[open]'\)\.forEach\(d=>\{\ try\{\ d\.close\(\);\ }catch\{}\ }\);\ document\.querySelectorAll\('\.dialog\.open'\)\.forEach\(d=>\ d\.classList\.remove\('open'\)\);\ }catch\{}
       toast('リセチE��しました');
     }
   };
@@ -487,7 +487,7 @@ function renderSettings(){
         if(!obj || typeof obj !== 'object') throw new Error('bad');
         state = { ...initialState(), ...obj };
         save();
-        renderAll();\n  try{ if(!document.querySelector('.dialog.open')) document.body.classList.remove('modal-open'); }catch{}
+        renderAll();\n  try{ if(!document.querySelector('.dialog.open')) document\.body\.classList\.remove\('modal-open'\);\ }catch\{}\n\ \ try\{\ document\.querySelectorAll\('dialog\[open]'\)\.forEach\(d=>\{\ try\{\ d\.close\(\);\ }catch\{}\ }\);\ document\.querySelectorAll\('\.dialog\.open'\)\.forEach\(d=>\ d\.classList\.remove\('open'\)\);\ }catch\{}
         toast('インポ�Eトしました');
         closeModal($("#ioDialog"));
       }catch{ toast('JSONを確認してください'); }
@@ -519,7 +519,7 @@ function renderSettings(){
       addBtn.onclick = ()=>{
         const name = prompt('なまぁE); if(!name) return;
         const id = idGen(); META.profiles.push({id,name}); META.currentId=id; localStorage.setItem(META_KEY, JSON.stringify(META));
-        state = initialState(); state.childName = name; save(); renderAll();\n  try{ if(!document.querySelector('.dialog.open')) document.body.classList.remove('modal-open'); }catch{}
+        state = initialState(); state.childName = name; save(); renderAll();\n  try{ if(!document.querySelector('.dialog.open')) document\.body\.classList\.remove\('modal-open'\);\ }catch\{}\n\ \ try\{\ document\.querySelectorAll\('dialog\[open]'\)\.forEach\(d=>\{\ try\{\ d\.close\(\);\ }catch\{}\ }\);\ document\.querySelectorAll\('\.dialog\.open'\)\.forEach\(d=>\ d\.classList\.remove\('open'\)\);\ }catch\{}
       };
       renBtn.onclick = ()=>{
         const p = META.profiles.find(x=>x.id===META.currentId); if(!p) return;
@@ -532,7 +532,7 @@ function renderSettings(){
         const cur=META.currentId; META.profiles = META.profiles.filter(x=>x.id!==cur);
         try{ localStorage.removeItem(pidKey(cur)); }catch{}
         META.currentId = META.profiles[0].id; localStorage.setItem(META_KEY, JSON.stringify(META));
-        state = loadProfileToActive(META.currentId) || initialState(); renderAll();\n  try{ if(!document.querySelector('.dialog.open')) document.body.classList.remove('modal-open'); }catch{}
+        state = loadProfileToActive(META.currentId) || initialState(); renderAll();\n  try{ if(!document.querySelector('.dialog.open')) document\.body\.classList\.remove\('modal-open'\);\ }catch\{}\n\ \ try\{\ document\.querySelectorAll\('dialog\[open]'\)\.forEach\(d=>\{\ try\{\ d\.close\(\);\ }catch\{}\ }\);\ document\.querySelectorAll\('\.dialog\.open'\)\.forEach\(d=>\ d\.classList\.remove\('open'\)\);\ }catch\{}
       };
     }catch{}
   })();
@@ -828,7 +828,7 @@ function bindChoreControls(){
 
 
 // ----- Init -----
-  renderAll();\n  try{ if(!document.querySelector('.dialog.open')) document.body.classList.remove('modal-open'); }catch{}
+  renderAll();\n  try{ if(!document.querySelector('.dialog.open')) document\.body\.classList\.remove\('modal-open'\);\ }catch\{}\n\ \ try\{\ document\.querySelectorAll\('dialog\[open]'\)\.forEach\(d=>\{\ try\{\ d\.close\(\);\ }catch\{}\ }\);\ document\.querySelectorAll\('\.dialog\.open'\)\.forEach\(d=>\ d\.classList\.remove\('open'\)\);\ }catch\{}
 // Cloud transaction -> append to UI/state (avoid feedback & duplicates)
   try{
     window.kidsAllowanceOnCloudTx = function(key, tx){
@@ -932,7 +932,7 @@ try{
           META.profiles = (META.profiles||[]); META.profiles.push({ id, name: state.childName||'なまぁE });
         }
         META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
-        const st = loadProfileToActive(id) || initialState(); state = st; renderAll();\n  try{ if(!document.querySelector('.dialog.open')) document.body.classList.remove('modal-open'); }catch{} toast('同期IDを適用しました');
+        const st = loadProfileToActive(id) || initialState(); state = st; renderAll();\n  try{ if(!document.querySelector('.dialog.open')) document\.body\.classList\.remove\('modal-open'\);\ }catch\{}\n\ \ try\{\ document\.querySelectorAll\('dialog\[open]'\)\.forEach\(d=>\{\ try\{\ d\.close\(\);\ }catch\{}\ }\);\ document\.querySelectorAll\('\.dialog\.open'\)\.forEach\(d=>\ d\.classList\.remove\('open'\)\);\ }catch\{} toast('同期IDを適用しました');
       }catch(e){ console.warn(e); }
     };
 
@@ -1033,3 +1033,17 @@ try{
   window.kidsAllowanceUpdateBalance = function(){};
   window.kidsAllowanceSync = function(){};
 }catch{}
+// Safety watchdog: close any stuck native <dialog> and clear fallback overlay
+(function(){
+  try{
+    let n=0; const tid = setInterval(()=>{
+      try{
+        document.querySelectorAll('dialog[open]').forEach(d=>{ try{ d.close(); }catch{} });
+        const anyOpen = document.querySelector('dialog[open]');
+        if(!anyOpen){ document.body.classList.remove('modal-open'); document.querySelectorAll('.dialog.open').forEach(x=> x.classList.remove('open')); }
+      }catch{}
+      if(++n>=10) clearInterval(tid);
+    }, 500);
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ try{ document.querySelectorAll('dialog[open]').forEach(d=>{ try{ d.close(); }catch{} }); document.body.classList.remove('modal-open'); }catch{} } }, { capture:true });
+  }catch{}
+})();
