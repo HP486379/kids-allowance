@@ -571,6 +571,7 @@ function contributeToGoal(goal){
     addTx('goal', amount, `ちょきん: ${goal.name}`);
     save();
     renderGoals();
+    renderSavings();
     if(goal.saved >= goal.target){
       confetti();
       toast('おめでとう！ もくひょう たっせい！');
