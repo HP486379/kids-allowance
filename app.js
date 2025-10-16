@@ -22,6 +22,7 @@
   });
 
   let state = load() || seed();
+  normalizeTransactions();
   try { mirrorToProfile(); } catch(_) {}
 
   // ----- Utils -----
@@ -54,14 +55,35 @@ function seed(){
     return st;
   }
 function computeBalance(){
-    return state.transactions.reduce((sum, t)=>{
-      if(t.type==='income' || t.type==='chore') return sum + t.amount;
-      if(t.type==='expense' || t.type==='goal') return sum - t.amount;
+    return (state.transactions||[]).reduce((sum, t)=>{
+      const amt = Number((t && t.amount) ?? 0);
+      if(!Number.isFinite(amt)) return sum;
+      if(t && (t.type==='income' || t.type==='chore')) return sum + amt;
+      if(t && (t.type==='expense' || t.type==='goal')) return sum - amt;
       return sum;
     }, 0);
   }
 
   
+  function normalizeTransactions(){
+    if(!Array.isArray(state.transactions)){
+      state.transactions = [];
+      return;
+    }
+    state.transactions = state.transactions.map(tx=>{
+      if(!tx || typeof tx !== 'object') return null;
+      const amt = Number(tx.amount);
+      const clean = { ...tx };
+      const base = Number.isFinite(amt) ? Math.abs(amt) : 0;
+      clean.amount = sanitizeAmount(base);
+      if(!clean.type) clean.type = 'income';
+      if(!clean.id) clean.id = id();
+      if(typeof clean.note !== 'string') clean.note = '';
+      if(!clean.dateISO){ try{ clean.dateISO = new Date().toISOString(); }catch{ clean.dateISO = ''; } }
+      return clean;
+    }).filter(Boolean);
+  }
+
   // ===== Multi-user meta (profiles) =====
   const META_KEY = 'kid-allowance:meta';
   const PROFILE_PREFIX = 'kid-allowance:profile:';
