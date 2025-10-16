@@ -224,3 +224,6 @@ textarea.input, .textarea{ padding:10px 12px; border-radius:12px; border:1px sol
 
 /* Ensure inert elements never block clicks */
 *[inert]{ pointer-events:auto !important; }
+
+/* Emergency: make all app elements clickable even if a parent tried to disable */
+.app, .app * { pointer-events: auto !important; }
