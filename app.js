@@ -64,7 +64,22 @@ function computeBalance(){
     }, 0);
   }
 
-  
+  function availableBalance(){
+    try{
+      let local = Number(computeBalance());
+      if(!Number.isFinite(local)) local = 0;
+      let shown = local;
+      try{
+        const disp = document.getElementById('balance');
+        if(disp && disp.textContent){
+          const parsed = parseAmount(String(disp.textContent));
+          if(Number.isFinite(parsed)) shown = Math.max(shown, parsed);
+        }
+      }catch{}
+      return shown;
+    }catch{ return 0; }
+  }
+
   function normalizeTransactions(){
     if(!Array.isArray(state.transactions)){
       state.transactions = [];
@@ -588,8 +603,8 @@ function renderSettings(){
     } catch(_) {}
   }
 function contributeToGoal(goal){
-    const max = computeBalance();
-    if(max<=0) return toast('まずはおこづかいをためよう！');
+    const max = availableBalance();
+    if(max <= 0) return toast('まずはおこづかいをためよう！');
     const val = prompt(`いくらちょきんする？（最大 ${money(max)}）`, Math.min(300, max).toString());
     const amount = parseAmount(val||'');
     if(!validAmount(amount)) return;
