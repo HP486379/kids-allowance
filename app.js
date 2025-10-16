@@ -680,7 +680,8 @@ function confetti(){
   }
 
   // ----- Helpers -----
-  const supportsDialog = typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype && 'showModal' in HTMLDialogElement.prototype;
+  // Force fallback dialogs to avoid browser 'inert' behavior blocking clicks
+  const supportsDialog = false;
   function openModal(dlg){ if(supportsDialog) dlg.showModal(); else { document.body.classList.add('modal-open'); dlg.classList.add('open'); } }
 function closeModal(dlg){ if(supportsDialog) dlg.close(); else { dlg.classList.remove('open'); document.body.classList.remove('modal-open'); } }
 function applyTheme(){
