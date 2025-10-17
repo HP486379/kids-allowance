@@ -110,6 +110,8 @@ window.addEventListener("DOMContentLoaded", () => {
         // 既存の UI 更新フックがあれば呼ぶ
         if (typeof window.kidsAllowanceApplyGoals === "function") {
           try { window.kidsAllowanceApplyGoals(arr || []); } catch (e) { console.warn("applyGoals hook error", e); }
+        } else {
+          window.__pendingGoals = arr || [];
         }
       } catch (inner) {
         console.warn("applyGoals hook failed", inner);
@@ -125,6 +127,7 @@ window.addEventListener("DOMContentLoaded", () => {
       try {
         if (typeof window.debugLog === "function") window.debugLog({ type: "listenChores", data: arr });
         if (window.kidsAllowanceApplyChores) window.kidsAllowanceApplyChores(arr);
+        else window.__pendingChores = arr || [];
       } catch (inner) {
         console.warn("applyChores hook failed", inner);
         if (typeof window.debugLog === "function") window.debugLog({ type: "applyChores_failed", e: String(inner) });
@@ -159,17 +162,18 @@ window.addEventListener("DOMContentLoaded", () => {
         arr.forEach((item) => {
           if (item && item.id) window._cloudSeen.add(item.id);
         });
+        const payload = arr.map((item) => ({
+          id: item?.id,
+          type: item?.type || "add",
+          amount: item?.amount,
+          label: item?.label ?? item?.note ?? "",
+          timestamp: item?.timestamp,
+          dateISO: item?.dateISO || "",
+        }));
         if (typeof window.kidsAllowanceApplyTransactions === "function") {
-          window.kidsAllowanceApplyTransactions(
-            arr.map((item) => ({
-              id: item?.id,
-              type: item?.type || "add",
-              amount: item?.amount,
-              label: item?.label ?? item?.note ?? "",
-              timestamp: item?.timestamp,
-              dateISO: item?.dateISO || "",
-            }))
-          );
+          window.kidsAllowanceApplyTransactions(payload);
+        } else {
+          window.__pendingTransactions = payload;
         }
       } catch (err) {
         console.warn("loadAllTransactions handler failed", err);
@@ -282,6 +286,8 @@ window.addEventListener('goalsUpdated', (e) => {
     const goals = (e && e.detail) ? e.detail : [];
     if (typeof window.kidsAllowanceApplyGoals === 'function') {
       try { window.kidsAllowanceApplyGoals(goals); } catch (_) {}
+    } else {
+      window.__pendingGoals = goals;
     }
     window.kidsAllowanceSaveGoals(goals);
   } catch (err) {
