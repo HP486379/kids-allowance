@@ -149,6 +149,37 @@ window.addEventListener("DOMContentLoaded", () => {
     console.warn("listenTransactions failed", e);
     if (typeof window.debugLog === "function") window.debugLog({ type: "listenTransactions_failed", e: String(e) });
   }
+
+  try {
+    loadAllTransactions((list) => {
+      try {
+        const arr = Array.isArray(list) ? list : [];
+        if (typeof window.debugLog === "function") window.debugLog({ type: "loadAllTransactions", count: arr.length });
+        window._cloudSeen = window._cloudSeen || new Set();
+        arr.forEach((item) => {
+          if (item && item.id) window._cloudSeen.add(item.id);
+        });
+        if (typeof window.kidsAllowanceApplyTransactions === "function") {
+          window.kidsAllowanceApplyTransactions(
+            arr.map((item) => ({
+              id: item?.id,
+              type: item?.type || "add",
+              amount: item?.amount,
+              label: item?.label ?? item?.note ?? "",
+              timestamp: item?.timestamp,
+              dateISO: item?.dateISO || "",
+            }))
+          );
+        }
+      } catch (err) {
+        console.warn("loadAllTransactions handler failed", err);
+        if (typeof window.debugLog === "function") window.debugLog({ type: "loadAllTransactions_failed", e: String(err) });
+      }
+    });
+  } catch (e) {
+    console.warn("loadAllTransactions failed", e);
+    if (typeof window.debugLog === "function") window.debugLog({ type: "loadAllTransactions_failed_outer", e: String(e) });
+  }
 });
 
 // ====== app.js から呼ばれるフック ======

@@ -1,4 +1,4 @@
-// キッズぽけっと｜お小遣い管理
+﻿// キッズぽけっと｜お小遣い管理
 // 依存なしのバニラJS。データは localStorage に保存。
 
 (function(){
@@ -872,6 +872,50 @@ function bindChoreControls(){
   };
 }catch{}
 
+// Remote transactions -> apply full list (initial sync)
+try{
+  window.kidsAllowanceApplyTransactions = function(transactions){
+    try{
+      if(!Array.isArray(transactions)) return;
+      const mapped = transactions.map(tx => {
+        if(!tx) return null;
+        const amt = Number(tx.amount);
+        const amount = sanitizeAmount(Number.isFinite(amt) ? Math.abs(amt) : 0);
+        const rawType = (tx.type || '').toLowerCase();
+        let type;
+        if(rawType === 'goal') type = 'goal';
+        else if(rawType === 'chore') type = 'chore';
+        else if(rawType === 'subtract' || rawType === 'expense') type = 'expense';
+        else type = 'income';
+        const note = String(tx.label ?? tx.note ?? '').trim();
+        let dateISO = '';
+        if(tx.dateISO && typeof tx.dateISO === 'string') dateISO = tx.dateISO;
+        if(!dateISO){
+          const ts = Number(tx.timestamp);
+          if(Number.isFinite(ts)){
+            try{ dateISO = new Date(ts).toISOString(); }catch{}
+          }
+        }
+        if(!dateISO){
+          try{ dateISO = new Date().toISOString(); }catch{ dateISO = ''; }
+        }
+        return {
+          id: String(tx.id || tx.localId || id()),
+          type,
+          amount,
+          note,
+          dateISO
+        };
+      }).filter(Boolean);
+      state.transactions = mapped;
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch{}
+      try{ mirrorToProfile(); }catch{}
+      try{ renderHome(); renderTransactions(); }catch{}
+      try{ document.getElementById('balance').textContent = money(computeBalance()); }catch{}
+      try{ if(window.kidsAllowanceUpdateBalance) window.kidsAllowanceUpdateBalance(state); }catch{}
+    }catch(e){ console.warn('kidsAllowanceApplyTransactions failed', e); }
+  };
+}catch{}
 // Remote goals -> apply to UI/state
 try{
   window.kidsAllowanceApplyGoals = function(goals){
