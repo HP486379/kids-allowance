@@ -1,4 +1,4 @@
-﻿// キッズぽけっと｜お小遣い管理
+// キッズぽけっと｜お小遣い管理
 // 依存なしのバニラJS。データは localStorage に保存。
 
 (function(){
@@ -918,6 +918,54 @@ try{
 }catch{}
 // Remote goals -> apply to UI/state
 try{
+  window.kidsAllowanceApplyTransactions = function(transactions){
+    try{
+      if(!Array.isArray(transactions)) return;
+      const mapped = transactions.map(tx=>{
+        if(!tx || typeof tx !== 'object') return null;
+        const amt = Number((tx.amount ?? tx.sum ?? tx.value));
+        const amount = sanitizeAmount(Number.isFinite(amt) ? Math.abs(amt) : 0);
+        const typeRaw = String(tx.type || '').toLowerCase();
+        let type = 'income';
+        if(typeRaw === 'goal') type = 'goal';
+        else if(typeRaw === 'chore') type = 'chore';
+        else if(typeRaw === 'expense' || typeRaw === 'subtract') type = 'expense';
+        else if(typeRaw === 'add') type = 'income';
+        const note = String(tx.note ?? tx.label ?? '').trim();
+        let dateISO = '';
+        if(typeof tx.dateISO === 'string' && tx.dateISO) dateISO = tx.dateISO;
+        if(!dateISO){
+          const ts = Number(tx.timestamp);
+          if(Number.isFinite(ts)){
+            try{ dateISO = new Date(ts).toISOString(); }catch{}
+          }
+        }
+        if(!dateISO){
+          try{ dateISO = new Date().toISOString(); }catch{ dateISO=''; }
+        }
+        return {
+          id: String(tx.id || tx.key || id()),
+          type,
+          amount,
+          note,
+          dateISO
+        };
+      }).filter(Boolean);
+      state.transactions = mapped;
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch{}
+      try{ mirrorToProfile(); }catch{}
+      try{ renderHome(); renderTransactions(); }catch{}
+      try{
+        const balEl = document.getElementById('balance');
+        if(balEl) balEl.textContent = money(computeBalance());
+      }catch{}
+      try{ if(window.kidsAllowanceUpdateBalance) window.kidsAllowanceUpdateBalance(state); }catch{}
+    }catch(e){ console.warn('kidsAllowanceApplyTransactions failed', e); }
+  };
+}catch{}
+
+// Remote goals -> apply to UI/state
+try{
   window.kidsAllowanceApplyGoals = function(goals){
     try{
       const arr = Array.isArray(goals) ? goals.map(g => ({
@@ -931,7 +979,26 @@ try{
       // Persist locally and re-render; may trigger sync, which is fine
       save();
       renderGoals();
+      renderSavings();
     }catch(e){ console.warn('kidsAllowanceApplyGoals failed', e); }
+  };
+}catch{}
+
+// Remote chores -> apply to UI/state
+try{
+  window.kidsAllowanceApplyChores = function(chores){
+    try{
+      const arr = Array.isArray(chores) ? chores.map(ch => ({
+        id: ch && ch.id ? String(ch.id) : id(),
+        name: (ch && ch.name) ? String(ch.name) : '',
+        reward: sanitizeAmount(Number(ch && ch.reward)),
+        lastDone: (ch && ch.lastDone) ? String(ch.lastDone) : ''
+      })) : [];
+      state.chores = arr;
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch{}
+      try{ mirrorToProfile(); }catch{}
+      renderChores();
+    }catch(e){ console.warn('kidsAllowanceApplyChores failed', e); }
   };
 }catch{}
 
@@ -1080,7 +1147,9 @@ try{
 try{
   window.KA_CLOUD_DISABLED = true;
   window.kidsAllowanceAddTx = function(){};
+  window.kidsAllowanceApplyTransactions = function(){};
   window.kidsAllowanceApplyGoals = function(){};
+  window.kidsAllowanceApplyChores = function(){};
   window.kidsAllowanceSaveProfile = function(){};
   window.kidsAllowanceUpdateBalance = function(){};
   window.kidsAllowanceSync = function(){};
