@@ -104,6 +104,19 @@ function computeBalance(){
   const PROFILE_PREFIX = 'kid-allowance:profile:';
   function pidKey(id){ return PROFILE_PREFIX + id; }
   function idGen(){ return Math.random().toString(36).slice(2,9); }
+  function markGoalsDirty(){ try{ window.__goalsDirty = true; }catch{} }
+  function clearGoalsDirty(){
+    try{
+      window.__goalsDirty = false;
+      if(Array.isArray(window.__pendingGoalsAfterSync)){
+        const pending = window.__pendingGoalsAfterSync;
+        delete window.__pendingGoalsAfterSync;
+        if(typeof window.kidsAllowanceApplyGoals === 'function'){
+          window.kidsAllowanceApplyGoals(pending);
+        }
+      }
+    }catch{}
+  }
   function ensureMeta(){
     try{
       let meta = JSON.parse(localStorage.getItem(META_KEY) || '');
@@ -355,6 +368,7 @@ function renderGoals(){
       if(!name) return toast('なまえをいれてね');
       if(!validAmount(target)) return toast('目標金額を正しく入れてね');
       state.goals.push({ id:id(), name, target, saved:0 });
+      markGoalsDirty();
       save();
       closeModal($('#goalDialog'));
       e.target.reset();
@@ -626,12 +640,14 @@ function editGoal(goal){
     if(!validAmount(target)) return toast('目標金額を正しく入れてね');
     goal.name = name.trim()||goal.name;
     goal.target = target;
+    markGoalsDirty();
     save();
     renderGoals();
   }
 function deleteGoal(goal){
     if(!confirm('もくひょうをけしますか？')) return;
     state.goals = state.goals.filter(g=>g.id!==goal.id);
+    markGoalsDirty();
     save();
     renderGoals();
   }
@@ -947,6 +963,10 @@ try{
         target: Math.round(Number(g && g.target) || 0),
         saved: Math.round(Number(g && g.saved) || 0)
       })) : [];
+      if(window.__goalsDirty){
+        window.__pendingGoalsAfterSync = arr;
+        return;
+      }
       // Replace entire goals list
       state.goals = arr;
       // Persist locally and re-render; may trigger sync, which is fine

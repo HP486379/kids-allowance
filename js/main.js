@@ -228,6 +228,16 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
         await saveGoals(goals);
         console.debug("saveGoals -> saved");
         if (typeof window.debugLog === "function") window.debugLog("saveGoals -> saved");
+        try{
+          window.__goalsDirty = false;
+          if(Array.isArray(window.__pendingGoalsAfterSync)){
+            const pending = window.__pendingGoalsAfterSync;
+            delete window.__pendingGoalsAfterSync;
+            if(typeof window.kidsAllowanceApplyGoals === "function"){
+              window.kidsAllowanceApplyGoals(pending);
+            }
+          }
+        }catch{}
       } catch (e) {
         console.warn("saveGoals failed", e);
         if (typeof window.debugLog === "function") window.debugLog({ type: "saveGoals_failed", e: String(e) });
