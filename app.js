@@ -877,6 +877,7 @@ try{
   window.kidsAllowanceApplyTransactions = function(transactions){
     try{
       if(!Array.isArray(transactions)) return;
+      const tombstone = _loadDeletedSet();
       const mapped = transactions.map(tx=>{
         if(!tx || typeof tx !== 'object') return null;
         const amt = Number((tx.amount ?? tx.sum ?? tx.value));
@@ -898,6 +899,11 @@ try{
         }
         if(!dateISO){
           try{ dateISO = new Date().toISOString(); }catch{ dateISO=''; }
+        }
+        if(tombstone && tombstone.size){
+          try{
+            if(tombstone.has(_fp(type, amount, note))) return null;
+          }catch{}
         }
         return {
           id: String(tx.id || tx.key || id()),

@@ -10,7 +10,8 @@ import {
   saveGoals,
   saveChores,
   listenGoals,
-  listenChores
+  listenChores,
+  saveTransactionsSnapshot
 } from "./firebase.js";
 
 // デバッグパネル（明示的に有効化した時のみ表示）
@@ -205,6 +206,17 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
         ? Object.values(state.goals)
         : [];
 
+      const transactions = Array.isArray(state.transactions)
+        ? state.transactions.map((tx) => ({
+            id: tx?.id,
+            type: tx?.type,
+            amount: tx?.amount,
+            note: tx?.note,
+            dateISO: tx?.dateISO,
+            timestamp: tx?.timestamp,
+          }))
+        : [];
+
       const summary = { balance, goals };
 
       // デバッグ: 保存前に表示
@@ -219,6 +231,21 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
       } catch (e) {
         console.warn("saveGoals failed", e);
         if (typeof window.debugLog === "function") window.debugLog({ type: "saveGoals_failed", e: String(e) });
+      }
+
+      try {
+        await saveTransactionsSnapshot(transactions);
+        console.debug("saveTransactionsSnapshot -> saved", transactions.length);
+        if (typeof window.debugLog === "function") window.debugLog({ type: "saveTransactions_saved", count: transactions.length });
+        try {
+          window._cloudSeen = window._cloudSeen || new Set();
+          transactions.forEach((tx) => {
+            if (tx && tx.id) window._cloudSeen.add(String(tx.id));
+          });
+        } catch {}
+      } catch (e) {
+        console.warn("saveTransactionsSnapshot failed", e);
+        if (typeof window.debugLog === "function") window.debugLog({ type: "saveTransactions_failed", e: String(e) });
       }
 
       // 従来通り summaries ノードにも保存

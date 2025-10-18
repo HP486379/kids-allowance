@@ -209,3 +209,34 @@ export function listenChores(callback) {
     callback?.(arr);
   });
 }
+function sanitizeTxKey(key, fallback) {
+  const raw = String(key ?? fallback ?? `tx_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+  return raw.replace(/[.#$/[\]]/g, "_");
+}
+
+export async function saveTransactionsSnapshot(transactions) {
+  const uid = getUid();
+  const node = ref(db, `users/${uid}/transactions`);
+  const arr = Array.isArray(transactions) ? transactions : [];
+  const payload = {};
+  arr.forEach((tx, index) => {
+    if (!tx || typeof tx !== "object") return;
+    const key = sanitizeTxKey(tx.id, `tx_${index}`);
+    const amount = Number(tx.amount) || 0;
+    const label = tx.note ?? tx.label ?? "";
+    let ts = Number(tx.timestamp);
+    if (!Number.isFinite(ts) && tx.dateISO) {
+      const parsed = Date.parse(tx.dateISO);
+      if (Number.isFinite(parsed)) ts = parsed;
+    }
+    if (!Number.isFinite(ts)) ts = Date.now();
+    payload[key] = {
+      type: tx.type || "add",
+      amount,
+      label,
+      timestamp: ts,
+      dateISO: typeof tx.dateISO === "string" ? tx.dateISO : "",
+    };
+  });
+  await set(node, payload);
+}
