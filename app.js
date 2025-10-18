@@ -367,7 +367,9 @@ function renderGoals(){
       const target = parseAmount($('#goalTarget').value);
       if(!name) return toast('なまえをいれてね');
       if(!validAmount(target)) return toast('目標金額を正しく入れてね');
-      state.goals.push({ id:id(), name, target, saved:0 });
+      const newGoal = { id:id(), name, target, saved:0 };
+      state.goals.push(newGoal);
+      recordGoalEvent('もくひょう作成', newGoal);
       markGoalsDirty();
       save();
       closeModal($('#goalDialog'));
@@ -588,6 +590,21 @@ function renderSettings(){
       if(animateCoin) dropCoin();
     }
   }
+  function recordGoalEvent(actionLabel, goal){
+    try{
+      const name = (goal && goal.name) ? String(goal.name) : '';
+      const note = `${actionLabel}: ${name}`;
+      const tx = {
+        id: id(),
+        type: 'goal-event',
+        amount: 0,
+        note,
+        dateISO: new Date().toISOString()
+      };
+      state.transactions.push(tx);
+      try{ renderTransactions(); }catch{}
+    }catch(e){ console.warn('recordGoalEvent failed', e); }
+  }
 
   // 取引の削除（さくじょ）
   function deleteTx(id){
@@ -640,12 +657,14 @@ function editGoal(goal){
     if(!validAmount(target)) return toast('目標金額を正しく入れてね');
     goal.name = name.trim()||goal.name;
     goal.target = target;
+    recordGoalEvent('もくひょう変更', goal);
     markGoalsDirty();
     save();
     renderGoals();
   }
 function deleteGoal(goal){
     if(!confirm('もくひょうをけしますか？')) return;
+    recordGoalEvent('もくひょう削除', goal);
     state.goals = state.goals.filter(g=>g.id!==goal.id);
     markGoalsDirty();
     save();
