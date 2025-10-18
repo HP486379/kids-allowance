@@ -900,9 +900,14 @@ try{
         if(!dateISO){
           try{ dateISO = new Date().toISOString(); }catch{ dateISO=''; }
         }
+        const firebaseId = tx && tx.id ? String(tx.id) : '';
         if(tombstone && tombstone.size){
           try{
-            if(tombstone.has(_fp(type, amount, note))) return null;
+            if(firebaseId && tombstone.has(`id|${firebaseId}`)) return null;
+            if(!firebaseId){
+              const sig = _fp(type, amount, note);
+              if(tombstone.has(`sign|${sig}`) || tombstone.has(sig)) return null;
+            }
           }catch{}
         }
         return {
@@ -1078,7 +1083,19 @@ try{
       const idx = (state.transactions||[]).findIndex(t=>t.id===id);
       if(idx < 0) return;
       const delTx = state.transactions[idx];
-      if (delTx){ const s=_loadDeletedSet(); s.add(_fp(delTx.type, delTx.amount, delTx.note)); _saveDeletedSet(s); }
+      if (delTx){
+        const s=_loadDeletedSet();
+        const signature = _fp(delTx.type, delTx.amount, delTx.note);
+        if(delTx.id){
+          s.add(`id|${delTx.id}`);
+        }else{
+          s.add(`sign|${signature}`);
+        }
+        if(!delTx.id){
+          s.add(signature);
+        }
+        _saveDeletedSet(s);
+      }
       if(!confirm('この記録を削除しますか？')) return;
       const next = [...state.transactions]; next.splice(idx,1); state.transactions = next;
       try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); if(META&&META.currentId){ localStorage.setItem(pidKey(META.currentId), JSON.stringify(state)); } }catch{}
