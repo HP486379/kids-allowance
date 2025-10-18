@@ -1140,14 +1140,16 @@ try{
 
 
 
-// Cloud sync OFF stubs
+// Cloud sync fallback stubs (only if modules didn't define them)
 try{
-  window.KA_CLOUD_DISABLED = true;
-  window.kidsAllowanceAddTx = function(){};
-  window.kidsAllowanceApplyTransactions = function(){};
-  window.kidsAllowanceApplyGoals = function(){};
-  window.kidsAllowanceApplyChores = function(){};
-  window.kidsAllowanceSaveProfile = function(){};
-  window.kidsAllowanceUpdateBalance = function(){};
-  window.kidsAllowanceSync = function(){};
+  if(typeof window.kidsAllowanceSync !== 'function'){
+    window.KA_CLOUD_DISABLED = true;
+    window.kidsAllowanceAddTx = function(){};
+    window.kidsAllowanceApplyTransactions = function(){};
+    window.kidsAllowanceApplyGoals = function(){};
+    window.kidsAllowanceApplyChores = function(){};
+    window.kidsAllowanceSaveProfile = function(){};
+    window.kidsAllowanceUpdateBalance = function(){};
+    window.kidsAllowanceSync = function(){};
+  }
 }catch{}
