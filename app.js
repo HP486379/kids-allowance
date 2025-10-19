@@ -38,8 +38,10 @@ function save(){
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   mirrorToProfile();
   mirrorGoalsCache();
+  const skipSync = !!window.__suppressNextSync;
+  window.__suppressNextSync = false;
   try {
-    if (window.kidsAllowanceSync) window.kidsAllowanceSync(state);
+    if (!skipSync && window.kidsAllowanceSync) window.kidsAllowanceSync(state);
   } catch (_) {}
 }
 function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY) || ''); }catch{ return null } }
@@ -369,7 +371,7 @@ function renderGoals(){
       if(!validAmount(target)) return toast('目標金額を正しく入れてね');
       const newGoal = { id:id(), name, target, saved:0 };
       state.goals.push(newGoal);
-      recordGoalEvent('もくひょう作成', newGoal);
+      recordGoalEvent('create', newGoal);
       markGoalsDirty();
       save();
       closeModal($('#goalDialog'));
@@ -590,12 +592,21 @@ function renderSettings(){
       if(animateCoin) dropCoin();
     }
   }
-  function recordGoalEvent(actionLabel, goal){
+  function recordGoalEvent(action, goal){
     try{
-      const name = (goal && goal.name) ? String(goal.name) : '';
-      const note = `${actionLabel}: ${name}`;
+      if(!goal || !goal.id) return;
+      const labels = {
+        create:'もくひょう作成',
+        update:'もくひょう変更',
+        delete:'もくひょう削除'
+      };
+      const name = goal && goal.name ? String(goal.name) : '';
+      const label = labels[action] || action;
+      const txId = `goal-event:${goal.id}:${action}`;
+      const note = `${label}: ${name}`;
+      state.transactions = (state.transactions||[]).filter(tx => tx && tx.id !== txId);
       const tx = {
-        id: id(),
+        id: txId,
         type: 'goal-event',
         amount: 0,
         note,
@@ -657,14 +668,14 @@ function editGoal(goal){
     if(!validAmount(target)) return toast('目標金額を正しく入れてね');
     goal.name = name.trim()||goal.name;
     goal.target = target;
-    recordGoalEvent('もくひょう変更', goal);
+    recordGoalEvent('update', goal);
     markGoalsDirty();
     save();
     renderGoals();
   }
 function deleteGoal(goal){
     if(!confirm('もくひょうをけしますか？')) return;
-    recordGoalEvent('もくひょう削除', goal);
+    recordGoalEvent('delete', goal);
     state.goals = state.goals.filter(g=>g.id!==goal.id);
     markGoalsDirty();
     save();
@@ -749,7 +760,7 @@ function dateJa(iso){
     }catch{ return '' }
   }
 function labelForType(type){
-    return type==='income' ? 'おこづかい' : type==='expense' ? 'おかいもの' : type==='goal' ? 'ちょきん' : 'おてつだい';
+    return type==='income' ? 'おこづかい' : type==='expense' ? 'おかいもの' : type==='goal' ? 'ちょきん' : type==='goal-event' ? 'もくひょうログ' : 'おてつだい';
   }
 // 入力金額の安全なパース（小数や全角・通貨記号を考慮）
 function toHalfWidthDigits(s){
@@ -953,7 +964,15 @@ try{
           dateISO
         };
       }).filter(Boolean);
-      state.transactions = mapped;
+      const unique = [];
+      const seen = new Set();
+      mapped.forEach(tx=>{
+        const key = tx && tx.id ? String(tx.id) : id();
+        if(seen.has(key)) return;
+        seen.add(key);
+        unique.push(tx);
+      });
+      state.transactions = unique;
       try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch{}
       try{ mirrorToProfile(); }catch{}
       try{ renderHome(); renderTransactions(); }catch{}
@@ -988,6 +1007,7 @@ try{
       }
       // Replace entire goals list
       state.goals = arr;
+      window.__suppressNextSync = true;
       // Persist locally and re-render; may trigger sync, which is fine
       save();
       renderGoals();
@@ -1165,7 +1185,7 @@ try{
         const s=_loadDeletedSet(); if (s.has(_fp(tx.type, tx.amount, tx.label||''))) return;
         window._cloudSeen = window._cloudSeen || new Set();
         if(window._cloudSeen.has(key)) return; window._cloudSeen.add(key);
-        const t={ id:id(), type:(tx.type==='add'?'income':'expense'), amount:sanitizeAmount(tx.amount), note:tx.label||'', dateISO:new Date(tx.timestamp||Date.now()).toISOString() };
+        const t={ id: (tx && tx.id) ? String(tx.id) : id(), type:(tx.type==='add'?'income':'expense'), amount:sanitizeAmount(tx.amount), note:tx.label||'', dateISO:new Date(tx.timestamp||Date.now()).toISOString() };
         const isPlus=(tp)=>tp==='income'||tp==='chore'||tp==='add'; const isMinus=(tp)=>tp==='expense'||tp==='goal'||tp==='subtract'; const sameKind=(a,b)=>(isPlus(a)&&isPlus(b))||(isMinus(a)&&isMinus(b));
         const recent=state.transactions.slice(-100); const dup=recent.some(u=>u&&sameKind(u.type,t.type)&&u.amount===t.amount&&(u.note||'')===(t.note||'')&&Math.abs(new Date(u.dateISO)-new Date(t.dateISO))<5*60*1000); if(dup) return;
         state.transactions.push(t); save(); renderHome(); renderTransactions();

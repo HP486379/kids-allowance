@@ -118,6 +118,7 @@ export async function addTransaction(tx) {
     amount: Number(tx?.amount) || 0,
     label: tx?.label ?? tx?.note ?? "",
     timestamp: tx?.timestamp || Date.now(),
+    id: tx?.id ? String(tx.id) : undefined,
   };
   return push(txRef, payload);
 }
@@ -231,6 +232,7 @@ export async function saveTransactionsSnapshot(transactions) {
     }
     if (!Number.isFinite(ts)) ts = Date.now();
     payload[key] = {
+      id: tx.id ? String(tx.id) : undefined,
       type: tx.type || "add",
       amount,
       label,

@@ -341,6 +341,7 @@ window.kidsAllowanceAddTx = async function (t) {
       amount: Number(t?.amount) || 0,
       label: t?.note || "",
       timestamp: Date.parse(t?.dateISO || "") || Date.now(),
+      id: t?.id,
     };
     await addTransaction(mapped);
   } catch (e) {
