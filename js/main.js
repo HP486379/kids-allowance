@@ -11,7 +11,8 @@ import {
   saveChores,
   listenGoals,
   listenChores,
-  saveTransactionsSnapshot
+  saveTransactionsSnapshot,
+  getUid
 } from "./firebase.js";
 
 // デバッグパネル（明示的に有効化した時のみ表示）
@@ -58,8 +59,173 @@ import {
   };
 })();
 
+let activeFirebaseUid = null;
+let firebaseUnsubscribes = [];
+
+function registerFirebaseUnsub(fn) {
+  if (typeof fn === "function") firebaseUnsubscribes.push(fn);
+}
+
+function teardownFirebaseListeners() {
+  firebaseUnsubscribes.forEach((fn) => {
+    try { fn(); } catch (e) { console.warn("firebase unsubscribe failed", e); }
+  });
+  firebaseUnsubscribes = [];
+}
+
+function initFirebaseRealtimeListeners() {
+  let uid = "guest";
+  try {
+    const resolved = getUid();
+    if (resolved) uid = resolved;
+  } catch (e) {
+    console.warn("getUid failed", e);
+  }
+  if (activeFirebaseUid === uid && firebaseUnsubscribes.length) return;
+
+  const previous = activeFirebaseUid;
+  teardownFirebaseListeners();
+  activeFirebaseUid = uid;
+
+  if (previous && previous !== uid) {
+    try { window._cloudSeen = new Set(); } catch (e) { console.warn("_cloudSeen reset failed", e); }
+  }
+
+  if (typeof window.debugLog === "function") window.debugLog({ type: "firebase_listeners_ready", uid });
+  console.debug("Firebase listeners active for uid:", uid);
+
+  try {
+    const off = listenProfile((p) => {
+      if (!p) return;
+      if (typeof p.name === "string") {
+        const el = document.getElementById("childName");
+        if (el) el.value = p.name;
+        const s = document.getElementById("settingsName");
+        if (s) s.value = p.name;
+      }
+      if (typeof p.avatar === "string") {
+        const b = document.getElementById("avatarButton");
+        if (b) b.textContent = p.avatar;
+      }
+      if (typeof p.theme === "string") {
+        const t = document.getElementById("themeSelect");
+        if (t) t.value = p.theme;
+        document.body.classList.toggle("theme-adventure", p.theme === "adventure");
+        document.body.classList.toggle("theme-cute", p.theme !== "adventure");
+      }
+    });
+    registerFirebaseUnsub(off);
+  } catch (e) {
+    console.warn("listenProfile failed", e);
+    if (typeof window.debugLog === "function") window.debugLog({ type: "listenProfile_failed", e: String(e) });
+  }
+
+  try {
+    const off = listenBalance((bal) => {
+      if (bal == null) return;
+      const el = document.getElementById("balance");
+      if (el) el.textContent = "¥" + Number(bal).toLocaleString("ja-JP");
+    });
+    registerFirebaseUnsub(off);
+  } catch (e) {
+    console.warn("listenBalance failed", e);
+    if (typeof window.debugLog === "function") window.debugLog({ type: "listenBalance_failed", e: String(e) });
+  }
+
+  try {
+    const off = listenGoals((arr) => {
+      try {
+        if (typeof window.debugLog === "function") window.debugLog({ type: "listenGoals", data: arr });
+        try { localStorage.setItem("kids-allowance:goals", JSON.stringify(arr || [])); } catch (err) { console.warn("goals cache save failed", err); }
+        try { window.dispatchEvent(new CustomEvent("goalsUpdated", { detail: arr || [] })); } catch (err) { console.warn("goalsUpdated dispatch failed", err); }
+        if (typeof window.kidsAllowanceApplyGoals === "function") {
+          try { window.kidsAllowanceApplyGoals(arr || []); } catch (err) { console.warn("applyGoals hook error", err); }
+        } else {
+          window.__pendingGoals = arr || [];
+        }
+      } catch (inner) {
+        console.warn("applyGoals hook failed", inner);
+      }
+    });
+    registerFirebaseUnsub(off);
+  } catch (e) {
+    console.warn("listenGoals failed", e);
+    if (typeof window.debugLog === "function") window.debugLog({ type: "listenGoals_failed", e: String(e) });
+  }
+
+  try {
+    const off = listenChores((arr) => {
+      try {
+        if (typeof window.kidsAllowanceApplyChores === "function") {
+          window.kidsAllowanceApplyChores(arr || []);
+        } else {
+          window.__pendingChores = arr || [];
+        }
+      } catch (inner) {
+        console.warn("applyChores hook failed", inner);
+        if (typeof window.debugLog === "function") window.debugLog({ type: "applyChores_failed", e: String(inner) });
+      }
+    });
+    registerFirebaseUnsub(off);
+  } catch (e) {
+    console.warn("listenChores failed", e);
+    if (typeof window.debugLog === "function") window.debugLog({ type: "listenChores_failed", e: String(e) });
+  }
+
+  try {
+    const off = listenTransactions((key, tx) => {
+      try {
+        if (window.kidsAllowanceOnCloudTx) window.kidsAllowanceOnCloudTx(key, tx);
+      } catch (err) {
+        console.warn("onCloudTx hook failed", err);
+      }
+      console.log("Firebase: new transaction", key, tx);
+      if (typeof window.debugLog === "function") window.debugLog({ type: "cloudTx", key, tx });
+    });
+    registerFirebaseUnsub(off);
+  } catch (e) {
+    console.warn("listenTransactions failed", e);
+    if (typeof window.debugLog === "function") window.debugLog({ type: "listenTransactions_failed", e: String(e) });
+  }
+
+  try {
+    const off = loadAllTransactions((list) => {
+      try {
+        const arr = Array.isArray(list) ? list : [];
+        if (typeof window.debugLog === "function") window.debugLog({ type: "loadAllTransactions", count: arr.length });
+        window._cloudSeen = window._cloudSeen || new Set();
+        arr.forEach((item) => {
+          if (item && item.id) window._cloudSeen.add(item.id);
+        });
+        const payload = arr.map((item) => ({
+          id: item?.id,
+          type: item?.type || "add",
+          amount: item?.amount,
+          label: item?.label ?? item?.note ?? "",
+          timestamp: item?.timestamp,
+          dateISO: item?.dateISO || "",
+        }));
+        if (typeof window.kidsAllowanceApplyTransactions === "function") {
+          window.kidsAllowanceApplyTransactions(payload);
+        } else {
+          window.__pendingTransactions = payload;
+        }
+      } catch (inner) {
+        console.warn("loadAllTransactions handler failed", inner);
+        if (typeof window.debugLog === "function") window.debugLog({ type: "loadAllTransactions_failed", e: String(inner) });
+      }
+    });
+    registerFirebaseUnsub(off);
+  } catch (e) {
+    console.warn("loadAllTransactions failed", e);
+    if (typeof window.debugLog === "function") window.debugLog({ type: "loadAllTransactions_failed_outer", e: String(e) });
+  }
+}
+
 // ====== Firebase 初期化 ======
 window.addEventListener("DOMContentLoaded", () => {
+  initFirebaseRealtimeListeners();
+  return; // legacy initialization below kept for context
   try {
     listenProfile((p) => {
       if (!p) return;
@@ -184,6 +350,17 @@ window.addEventListener("DOMContentLoaded", () => {
   } catch (e) {
     console.warn("loadAllTransactions failed", e);
     if (typeof window.debugLog === "function") window.debugLog({ type: "loadAllTransactions_failed_outer", e: String(e) });
+  }
+});
+
+window.addEventListener("kids-allowance:uid-change", () => {
+  initFirebaseRealtimeListeners();
+});
+
+window.addEventListener("storage", (ev) => {
+  if (!ev) return;
+  if (ev.key === "kid-allowance:meta" || ev.key === "kid-allowance:share-code") {
+    initFirebaseRealtimeListeners();
   }
 });
 

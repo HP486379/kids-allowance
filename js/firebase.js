@@ -87,7 +87,7 @@ export async function saveProfile(profile) {
 
 export function listenProfile(callback) {
   const uid = getUid();
-  onValue(ref(db, `users/${uid}/profile`), (snap) => {
+  return onValue(ref(db, `users/${uid}/profile`), (snap) => {
     callback(snap.val() || {});
   });
 }
@@ -103,7 +103,7 @@ export async function updateBalance(balance) {
 
 export function listenBalance(callback) {
   const uid = getUid();
-  onValue(ref(db, `users/${uid}/balance`), (snap) => {
+  return onValue(ref(db, `users/${uid}/balance`), (snap) => {
     const v = snap.val();
     callback(v && typeof v.value !== "undefined" ? v.value : null);
   });
@@ -126,7 +126,7 @@ export async function addTransaction(tx) {
 export function listenTransactions(callback) {
   const uid = getUid();
   const txRef = ref(db, `users/${uid}/transactions`);
-  onChildAdded(txRef, (snapshot) => {
+  return onChildAdded(txRef, (snapshot) => {
     callback?.(snapshot.key, snapshot.val());
   });
 }
@@ -135,7 +135,7 @@ export function listenTransactions(callback) {
 export function loadAllTransactions(callback) {
   const uid = getUid();
   const txRef = ref(db, "users/" + uid + "/transactions");
-  onValue(txRef, (snapshot) => {
+  return onValue(txRef, (snapshot) => {
     const data = snapshot.val() || {};
     const list = Object.entries(data).map(([key, val]) => ({ id: key, ...val }));
     callback?.(list);
@@ -193,7 +193,7 @@ function normalizeSnapshotToArray(val) {
 
 export function listenGoals(callback) {
   const uid = getUid();
-  onValue(ref(db, "users/" + uid + "/goals"), (snap) => {
+  return onValue(ref(db, "users/" + uid + "/goals"), (snap) => {
     const val = snap.val();
     const arr = normalizeSnapshotToArray(val);
     console.debug("listenGoals -> received", uid, arr);
@@ -203,7 +203,7 @@ export function listenGoals(callback) {
 
 export function listenChores(callback) {
   const uid = getUid();
-  onValue(ref(db, "users/" + uid + "/chores"), (snap) => {
+  return onValue(ref(db, "users/" + uid + "/chores"), (snap) => {
     const val = snap.val();
     const arr = normalizeSnapshotToArray(val);
     console.debug("listenChores -> received", uid, arr);

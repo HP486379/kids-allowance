@@ -139,6 +139,12 @@ function computeBalance(){
       return meta;
     }
   }
+  function emitUidChange(newId){
+    try{
+      const detailId = newId == null ? '' : String(newId);
+      window.dispatchEvent(new CustomEvent('kids-allowance:uid-change', { detail:{ id: detailId } }));
+    }catch{}
+  }
   let META = ensureMeta();
   mirrorGoalsCache();
   // goals 用のローカルキャッシュキー（プロフィールID固有）
@@ -165,6 +171,7 @@ function computeBalance(){
       mirrorGoalsCache();
       const st = loadProfileToActive(id) || initialState();
       META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
+      emitUidChange(id);
       state = st; renderAll();
     }catch{}
   }// ----- Rendering -----
@@ -562,6 +569,7 @@ function renderSettings(){
       addBtn.onclick = ()=>{
         const name = prompt('なまえ'); if(!name) return;
         const id = idGen(); META.profiles.push({id,name}); META.currentId=id; localStorage.setItem(META_KEY, JSON.stringify(META));
+        emitUidChange(id);
         state = initialState(); state.childName = name; save(); renderAll();
       };
       renBtn.onclick = ()=>{
@@ -575,6 +583,7 @@ function renderSettings(){
         const cur=META.currentId; META.profiles = META.profiles.filter(x=>x.id!==cur);
         try{ localStorage.removeItem(pidKey(cur)); }catch{}
         META.currentId = META.profiles[0].id; localStorage.setItem(META_KEY, JSON.stringify(META));
+        emitUidChange(META.currentId);
         state = loadProfileToActive(META.currentId) || initialState(); renderAll();
       };
     }catch{}
@@ -1095,6 +1104,7 @@ try{
           META.profiles = (META.profiles||[]); META.profiles.push({ id, name: state.childName||'なまえ' });
         }
         META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
+        emitUidChange(id);
         const st = loadProfileToActive(id) || initialState(); state = st; renderAll(); toast('同期IDを適用しました');
       }catch(e){ console.warn(e); }
     };
