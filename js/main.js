@@ -218,19 +218,30 @@ function ensureGoalRemovalQueue() {
   }
 }
 
-function getPendingGoalRemovalIds() {
+function getPendingGoalRemovalIds(activeGoals) {
   try {
     ensureGoalRemovalQueue();
     const queue = window.__goalRemovalQueue;
     if (!Array.isArray(queue) || queue.length === 0) return [];
+    const activeSet = new Set();
+    (Array.isArray(activeGoals) ? activeGoals : []).forEach((goal) => {
+      try {
+        const id = goal?.id != null ? String(goal.id).trim() : "";
+        if (id) activeSet.add(id);
+      } catch (_) {}
+    });
     const seen = new Set();
     const ids = [];
+    const keep = [];
     queue.forEach((raw) => {
       const str = raw != null ? String(raw).trim() : "";
       if (!str || seen.has(str)) return;
       seen.add(str);
+      if (activeSet.has(str)) return;
       ids.push(str);
+      keep.push(str);
     });
+    window.__goalRemovalQueue = keep;
     return ids;
   } catch (err) {
     console.warn("getPendingGoalRemovalIds failed", err);
@@ -665,7 +676,7 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
       const syncStatus = { goals: true, transactions: true, summary: true };
 
       // users/{uid}/goals に保存（listenGoals が反応するノード）
-      const removedGoalIds = getPendingGoalRemovalIds();
+      const removedGoalIds = getPendingGoalRemovalIds(rawLocalGoals);
       const { payload: goalsForSave, removals: appliedRemovals } = buildGoalsPayload(rawLocalGoals, removedGoalIds);
       if (typeof window.debugLog === "function") {
         window.debugLog({ type: "saveGoals_request", count: goalsForSave.length, removed: appliedRemovals });
@@ -773,7 +784,7 @@ window.kidsAllowanceSaveGoals = function (goals) {
   goalsTimer = setTimeout(async () => {
     try {
       const arr = Array.isArray(goals) ? goals : [];
-      const removedGoalIds = getPendingGoalRemovalIds();
+      const removedGoalIds = getPendingGoalRemovalIds(arr);
       const { payload: goalsForSave, removals: appliedRemovals } = buildGoalsPayload(arr, removedGoalIds);
       await saveGoals(goalsForSave, appliedRemovals);
       try { updateKnownGoalIds(goalsForSave); } catch {}

@@ -223,3 +223,19 @@ test('buildGoalsPayload preserves updatedAt and removal ids', () => {
 
   ctx.Date.now = originalNow;
 });
+
+test('getPendingGoalRemovalIds drops active goal ids from the queue', () => {
+  const ctx = loadApplyPendingContext();
+  ctx.window.__goalRemovalQueue = ['keep', 'remove', 'keep', ''];
+
+  const pending = ctx.getPendingGoalRemovalIds([
+    { id: 'keep', name: 'Switch' },
+    { id: 'still-here', name: 'Guitar' },
+  ]);
+
+  assert.deepEqual(JSON.parse(JSON.stringify(pending)), ['remove']);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(ctx.window.__goalRemovalQueue)),
+    ['remove']
+  );
+});
