@@ -344,6 +344,9 @@ function applyPendingGoalsAfterSync() {
     const latestKey = typeof window.__latestServerGoalsKey === "string" && window.__latestServerGoalsKey
       ? window.__latestServerGoalsKey
       : null;
+    const lastSyncedKey = typeof window.__lastSyncedGoalsKey === "string" && window.__lastSyncedGoalsKey
+      ? window.__lastSyncedGoalsKey
+      : null;
 
     if (
       pendingVersion &&
@@ -361,8 +364,26 @@ function applyPendingGoalsAfterSync() {
           latestVersion,
           pendingKey,
           latestKey,
+          lastSyncedKey,
         });
       }
+      return false;
+    }
+
+    if (pendingKey && lastSyncedKey && pendingKey !== lastSyncedKey) {
+      if (typeof window.debugLog === "function") {
+        window.debugLog({
+          type: "applyPendingGoalsAfterSync_skip",
+          reason: "fingerprint_mismatch",
+          pendingVersion,
+          latestVersion,
+          pendingKey,
+          latestKey,
+          lastSyncedKey,
+        });
+      }
+      delete window.__pendingGoalsAfterSync;
+      delete window.__pendingGoalsVersion;
       return false;
     }
 

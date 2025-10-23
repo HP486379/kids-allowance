@@ -194,6 +194,30 @@ test('applyPendingGoalsAfterSync keeps queue when snapshot diverges', () => {
   assert.equal(ctx.window.__pendingGoalsVersion, 2);
 });
 
+test('applyPendingGoalsAfterSync drops pending snapshot when last sync differs', () => {
+  const ctx = loadApplyPendingContext();
+  const pending = [{ id: 'g1', name: 'おもちゃ', target: 2000, saved: 0 }];
+  const synced = [{ id: 'g1', name: 'おもちゃ', target: 2000, saved: 500 }];
+
+  ctx.window.__pendingGoalsAfterSync = JSON.parse(JSON.stringify(pending));
+  ctx.window.__pendingGoalsVersion = 4;
+  ctx.window.__latestServerGoalsVersion = 4;
+  ctx.window.__latestServerGoalsKey = ctx.fingerprintGoals(pending);
+  ctx.window.__lastSyncedGoalsKey = ctx.fingerprintGoals(synced);
+
+  let applied = false;
+  ctx.window.kidsAllowanceApplyGoals = () => {
+    applied = true;
+  };
+
+  const result = ctx.applyPendingGoalsAfterSync();
+
+  assert.equal(result, false);
+  assert.equal(applied, false);
+  assert.equal(ctx.window.__pendingGoalsAfterSync, undefined, 'stale pending payload should be cleared');
+  assert.equal(ctx.window.__pendingGoalsVersion, undefined, 'stale pending version should be cleared');
+});
+
 test('buildGoalsPayload preserves updatedAt and removal ids', () => {
   const ctx = loadApplyPendingContext();
   const originalNow = ctx.Date.now;
