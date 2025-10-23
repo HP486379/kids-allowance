@@ -301,34 +301,44 @@ function applyPendingGoalsAfterSync() {
   try {
     if (!Array.isArray(window.__pendingGoalsAfterSync)) return false;
     const pending = window.__pendingGoalsAfterSync;
-    delete window.__pendingGoalsAfterSync;
     const pendingVersion = Number(window.__pendingGoalsVersion || 0);
-    delete window.__pendingGoalsVersion;
-
     const latestVersion = Number(window.__latestServerGoalsVersion || 0);
+    const pendingKey = fingerprintGoals(pending);
+    const latestKey = typeof window.__latestServerGoalsKey === "string" && window.__latestServerGoalsKey
+      ? window.__latestServerGoalsKey
+      : null;
+
     if (
       pendingVersion &&
       latestVersion &&
-      pendingVersion < latestVersion
+      pendingVersion < latestVersion &&
+      pendingKey &&
+      latestKey &&
+      pendingKey !== latestKey
     ) {
       if (typeof window.debugLog === "function") {
         window.debugLog({
           type: "applyPendingGoalsAfterSync_skip",
-          reason: "stale_version",
+          reason: "stale_mismatch",
           pendingVersion,
           latestVersion,
+          pendingKey,
+          latestKey,
         });
       }
       return false;
     }
 
-    const pendingKey = fingerprintGoals(pending);
+    delete window.__pendingGoalsAfterSync;
+    delete window.__pendingGoalsVersion;
+
     if (typeof window.debugLog === "function") {
       window.debugLog({
         type: "applyPendingGoalsAfterSync_apply",
         pendingVersion,
         latestVersion,
         pendingKey,
+        latestKey,
       });
     }
 

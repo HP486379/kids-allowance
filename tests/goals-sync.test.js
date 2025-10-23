@@ -56,6 +56,30 @@ function loadGoalHydrationContext() {
   return sandbox;
 }
 
+function loadApplyPendingContext() {
+  const mainJs = fs.readFileSync(path.join(__dirname, '..', 'js', 'main.js'), 'utf8');
+  const start = mainJs.indexOf('function fingerprintGoals(');
+  const end = mainJs.indexOf('function initRealtimeListeners()', start);
+  if (start === -1 || end === -1) {
+    throw new Error('Unable to locate pending goals helpers in main.js');
+  }
+  const snippet = mainJs.slice(start, end);
+
+  const context = {
+    window: {},
+    console,
+    JSON,
+    Number,
+    Object,
+    Array,
+  };
+
+  const script = new vm.Script(snippet, { filename: 'main.js-pending-snippet' });
+  const sandbox = vm.createContext(context);
+  script.runInContext(sandbox);
+  return sandbox;
+}
+
 test('hydrates remote goals into state and triggers renders', () => {
   const ctx = loadGoalHydrationContext();
   ctx.window.__goalsDirty = false;
@@ -116,4 +140,52 @@ test('applyGoalsDirectly skips home render for local imports', () => {
   assert.equal(ctx.renderSavingsCalls, 1);
   assert.equal(ctx.renderHomeCalls, 0, 'local apply should not trigger home render');
   assert.deepEqual(JSON.parse(JSON.stringify(ctx.state.goals)), [{ id: 'local', name: 'ノートPC', target: 80000, saved: 5000 }]);
+});
+
+test('applyPendingGoalsAfterSync tolerates newer server version when payload matches', () => {
+  const ctx = loadApplyPendingContext();
+  const payload = [
+    { id: 'g1', name: 'ギター', target: 5000, saved: 0 },
+    { id: 'g2', name: 'マンガ', target: 1500, saved: 200 },
+  ];
+
+  ctx.window.__pendingGoalsAfterSync = JSON.parse(JSON.stringify(payload));
+  ctx.window.__pendingGoalsVersion = 3;
+  ctx.window.__latestServerGoalsVersion = 5;
+  ctx.window.__latestServerGoalsKey = ctx.fingerprintGoals(payload);
+
+  let applied;
+  ctx.window.kidsAllowanceApplyGoals = (list) => {
+    applied = JSON.parse(JSON.stringify(list));
+  };
+
+  const result = ctx.applyPendingGoalsAfterSync();
+
+  assert.equal(result, true);
+  assert.deepEqual(applied, payload);
+  assert.equal(ctx.window.__pendingGoalsAfterSync, undefined);
+  assert.equal(ctx.window.__pendingGoalsVersion, undefined);
+});
+
+test('applyPendingGoalsAfterSync keeps queue when snapshot diverges', () => {
+  const ctx = loadApplyPendingContext();
+  const pending = [{ id: 'g1', name: 'ギター', target: 5000, saved: 0 }];
+  const latest = [{ id: 'g1', name: 'ギター', target: 5000, saved: 300 }];
+
+  ctx.window.__pendingGoalsAfterSync = JSON.parse(JSON.stringify(pending));
+  ctx.window.__pendingGoalsVersion = 2;
+  ctx.window.__latestServerGoalsVersion = 3;
+  ctx.window.__latestServerGoalsKey = ctx.fingerprintGoals(latest);
+
+  let applied = false;
+  ctx.window.kidsAllowanceApplyGoals = () => {
+    applied = true;
+  };
+
+  const result = ctx.applyPendingGoalsAfterSync();
+
+  assert.equal(result, false);
+  assert.equal(applied, false);
+  assert.deepEqual(ctx.window.__pendingGoalsAfterSync, pending, 'pending payload should remain for future attempts');
+  assert.equal(ctx.window.__pendingGoalsVersion, 2);
 });
