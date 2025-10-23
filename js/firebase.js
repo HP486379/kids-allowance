@@ -87,7 +87,7 @@ export async function saveProfile(profile) {
 
 export function listenProfile(callback) {
   const uid = getUid();
-  onValue(ref(db, `users/${uid}/profile`), (snap) => {
+  return onValue(ref(db, `users/${uid}/profile`), (snap) => {
     callback(snap.val() || {});
   });
 }
@@ -103,7 +103,7 @@ export async function updateBalance(balance) {
 
 export function listenBalance(callback) {
   const uid = getUid();
-  onValue(ref(db, `users/${uid}/balance`), (snap) => {
+  return onValue(ref(db, `users/${uid}/balance`), (snap) => {
     const v = snap.val();
     callback(v && typeof v.value !== "undefined" ? v.value : null);
   });
@@ -126,7 +126,7 @@ export async function addTransaction(tx) {
 export function listenTransactions(callback) {
   const uid = getUid();
   const txRef = ref(db, `users/${uid}/transactions`);
-  onChildAdded(txRef, (snapshot) => {
+  return onChildAdded(txRef, (snapshot) => {
     callback?.(snapshot.key, snapshot.val());
   });
 }
@@ -135,7 +135,7 @@ export function listenTransactions(callback) {
 export function loadAllTransactions(callback) {
   const uid = getUid();
   const txRef = ref(db, "users/" + uid + "/transactions");
-  onValue(txRef, (snapshot) => {
+  return onValue(txRef, (snapshot) => {
     const data = snapshot.val() || {};
     const list = Object.entries(data).map(([key, val]) => ({ id: key, ...val }));
     callback?.(list);
@@ -151,19 +151,41 @@ function makeIdIfMissing(item) {
   return `g_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 }
 
+function normalizeGoalForSave(goal) {
+  const id = makeIdIfMissing(goal);
+  if (goal && !goal.id) {
+    try {
+      goal.id = id;
+    } catch (_) {}
+  }
+  const name = goal && goal.name ? String(goal.name) : "";
+  const targetRaw = Number(goal && goal.target);
+  const savedRaw = Number(goal && goal.saved);
+  const target = Number.isFinite(targetRaw) ? Math.max(0, Math.round(targetRaw)) : 0;
+  const saved = Number.isFinite(savedRaw) ? Math.max(0, Math.round(savedRaw)) : 0;
+  return {
+    id,
+    name,
+    target,
+    saved,
+    updatedAt: Date.now(),
+  };
+}
+
 export async function saveGoals(goals) {
   const uid = getUid();
-  const node = ref(db, "users/" + uid + "/goals");
+  const node = ref(db, `users/${uid}/goals`);
   const arr = Array.isArray(goals) ? goals : [];
   const payload = {};
-  arr.forEach((g) => {
-    const id = makeIdIfMissing(g);
-    // 既存のプロパティはそのまま保持。id を埋める。
-    payload[id] = { ...(g || {}), id };
+
+  arr.forEach((goal) => {
+    if (!goal) return;
+    const normalized = normalizeGoalForSave(goal);
+    payload[normalized.id] = normalized;
   });
-  // 空であれば空オブジェクトとして保存（配列だと穴が生じるため）
-  await set(node, Object.keys(payload).length ? payload : {});
-  console.debug("saveGoals -> saved", uid, payload);
+
+  await set(node, payload);
+  console.debug("saveGoals -> saved", uid, Object.keys(payload));
 }
 
 export async function saveChores(chores) {
@@ -193,7 +215,7 @@ function normalizeSnapshotToArray(val) {
 
 export function listenGoals(callback) {
   const uid = getUid();
-  onValue(ref(db, "users/" + uid + "/goals"), (snap) => {
+  return onValue(ref(db, "users/" + uid + "/goals"), (snap) => {
     const val = snap.val();
     const arr = normalizeSnapshotToArray(val);
     console.debug("listenGoals -> received", uid, arr);
@@ -203,7 +225,7 @@ export function listenGoals(callback) {
 
 export function listenChores(callback) {
   const uid = getUid();
-  onValue(ref(db, "users/" + uid + "/chores"), (snap) => {
+  return onValue(ref(db, "users/" + uid + "/chores"), (snap) => {
     const val = snap.val();
     const arr = normalizeSnapshotToArray(val);
     console.debug("listenChores -> received", uid, arr);

@@ -24,6 +24,9 @@
   let state = load() || seed();
   normalizeTransactions();
   try { mirrorToProfile(); } catch(_) {}
+  let tabsKeydownListener = null;
+  ensureGoalRemovalQueue();
+  try{ window.__KA_STATE = state; }catch{}
 
   // ----- Utils -----
   function id(){ return Math.random().toString(36).slice(2,9) }
@@ -43,6 +46,11 @@ function save(){
   try {
     if (!skipSync && window.kidsAllowanceSync) window.kidsAllowanceSync(state);
   } catch (_) {}
+}
+function persistWithoutSync(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch{}
+  mirrorToProfile();
+  mirrorGoalsCache();
 }
 function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY) || ''); }catch{ return null } }
 function seed(){
@@ -103,6 +111,7 @@ function computeBalance(){
 
   // ===== Multi-user meta (profiles) =====
   const META_KEY = 'kid-allowance:meta';
+  const SHARE_KEY = 'kid-allowance:share-code';
   const PROFILE_PREFIX = 'kid-allowance:profile:';
   function pidKey(id){ return PROFILE_PREFIX + id; }
   function idGen(){ return Math.random().toString(36).slice(2,9); }
@@ -119,6 +128,39 @@ function computeBalance(){
       }
     }catch{}
   }
+  function ensureGoalRemovalQueue(){
+    try{
+      if(Array.isArray(window.__goalRemovalQueue)) return;
+      if(window.__goalRemovalQueue && typeof window.__goalRemovalQueue.forEach === 'function'){
+        const set = new Set();
+        window.__goalRemovalQueue.forEach((id)=>{
+          const str = id!=null ? String(id).trim() : '';
+          if(str) set.add(str);
+        });
+        window.__goalRemovalQueue = Array.from(set);
+        return;
+      }
+      window.__goalRemovalQueue = [];
+    }catch{}
+  }
+  function queueGoalRemoval(id){
+    try{
+      ensureGoalRemovalQueue();
+      const str = id!=null ? String(id).trim() : '';
+      if(!str) return;
+      if(!window.__goalRemovalQueue.includes(str)){
+        window.__goalRemovalQueue.push(str);
+      }
+    }catch{}
+  }
+  function queueGoalRemovals(ids){
+    try{
+      (Array.isArray(ids)?ids:[]).forEach((id)=>queueGoalRemoval(id));
+    }catch{}
+  }
+  function storedShareId(){
+    try{ return localStorage.getItem(SHARE_KEY) || ''; }catch{ return ''; }
+  }
   function ensureMeta(){
     try{
       let meta = JSON.parse(localStorage.getItem(META_KEY) || '');
@@ -128,6 +170,25 @@ function computeBalance(){
         const st = load() || initialState();
         localStorage.setItem(pidKey(id), JSON.stringify(st));
         localStorage.setItem(META_KEY, JSON.stringify(meta));
+        try{ localStorage.setItem(SHARE_KEY, id); }catch{}
+      }
+      const share = storedShareId();
+      if(share){
+        if(!(meta.profiles||[]).some(p=>p.id===share)){
+          const baseName = (meta.profiles && meta.profiles[0] && meta.profiles[0].name) || 'なまえ';
+          meta.profiles = (meta.profiles||[]);
+          meta.profiles.push({ id: share, name: baseName });
+        }
+        if(meta.currentId !== share){
+          meta.currentId = share;
+          localStorage.setItem(META_KEY, JSON.stringify(meta));
+          try{
+            if(!localStorage.getItem(pidKey(share))){
+              const st = load() || initialState();
+              localStorage.setItem(pidKey(share), JSON.stringify(st));
+            }
+          }catch{}
+        }
       }
       return meta;
     }catch{
@@ -136,10 +197,18 @@ function computeBalance(){
       localStorage.setItem(pidKey(id), JSON.stringify(st));
       const meta = { profiles:[{ id, name:'なまえ' }], currentId:id };
       localStorage.setItem(META_KEY, JSON.stringify(meta));
+      try{ localStorage.setItem(SHARE_KEY, id); }catch{}
       return meta;
     }
   }
   let META = ensureMeta();
+  function syncShareUid(uid, silent=true){
+    try{ localStorage.setItem(SHARE_KEY, uid||''); }catch{}
+    try{
+      if(window.kidsAllowanceSetShareUid) window.kidsAllowanceSetShareUid(uid, { silent });
+    }catch{}
+  }
+  syncShareUid(META && META.currentId ? META.currentId : storedShareId(), true);
   mirrorGoalsCache();
   // goals 用のローカルキャッシュキー（プロフィールID固有）
   function goalsCacheKey(){
@@ -165,7 +234,11 @@ function computeBalance(){
       mirrorGoalsCache();
       const st = loadProfileToActive(id) || initialState();
       META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
-      state = st; renderAll();
+      syncShareUid(id, true);
+      ensureGoalRemovalQueue();
+      window.__goalRemovalQueue = [];
+      state = st; try{ window.__KA_STATE = state; }catch{} renderAll();
+      try{ if(window.kidsAllowanceReloadSync) window.kidsAllowanceReloadSync(true); }catch{}
     }catch{}
   }// ----- Rendering -----
   function renderAll(){
@@ -195,25 +268,28 @@ function renderTabs(){
       };
     });
     // Controller/keyboard: left/right to switch tabs (skip when typing)
-    document.addEventListener('keydown', (e)=>{
-      const t = e.target;
-      if(t && ['INPUT','TEXTAREA','SELECT'].includes(t.tagName)) return;
-      if(e.key==='ArrowLeft' || e.key==='ArrowRight'){
-        const tabs = $$('.tab');
-        const idx = tabs.findIndex(b=>b.classList.contains('active'));
-        if(idx>=0){
-          const next = (idx + (e.key==='ArrowRight'?1:-1) + tabs.length) % tabs.length;
-          tabs[next].click();
-          tabs[next].focus();
-          e.preventDefault();
+    if(!tabsKeydownListener){
+      tabsKeydownListener = (e)=>{
+        const t = e.target;
+        if(t && ['INPUT','TEXTAREA','SELECT'].includes(t.tagName)) return;
+        if(e.key==='ArrowLeft' || e.key==='ArrowRight'){
+          const tabs = $$('.tab');
+          const idx = tabs.findIndex(b=>b.classList.contains('active'));
+          if(idx>=0){
+            const next = (idx + (e.key==='ArrowRight'?1:-1) + tabs.length) % tabs.length;
+            tabs[next].click();
+            tabs[next].focus();
+            e.preventDefault();
+          }
         }
-      }
-      if(e.key==='Escape'){
-        // close any open fallback dialog
-        const openDlg = $('.dialog.open');
-        if(openDlg){ closeModal(openDlg); }
-      }
-    }, { once:true });
+        if(e.key==='Escape'){
+          // close any open fallback dialog
+          const openDlg = $('.dialog.open');
+          if(openDlg){ closeModal(openDlg); }
+        }
+      };
+      document.addEventListener('keydown', tabsKeydownListener);
+    }
   }
 function renderHome(){
     // recent
@@ -492,14 +568,23 @@ function renderSettings(){
   $("#settingsName").oninput = (e)=>{ state.childName = e.target.value; save(); $("#childName").value = state.childName; try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
   $("#currency").onchange = (e)=>{ state.currency = e.target.value; save(); renderHeader(); renderGoals(); renderChores(); renderTransactions(); renderHome(); };
   $("#themeSelect").onchange = (e)=>{ state.theme = e.target.value; save(); applyTheme(); renderHeader(); renderHome(); renderTransactions(); renderGoals(); renderChores(); renderSettings(); try{ if(window.kidsAllowanceSaveProfile) window.kidsAllowanceSaveProfile(state); }catch{} };
-  try{ const syncDisp = document.getElementById('syncIdDisplay'); if(syncDisp){ syncDisp.value = (META && META.currentId) || ''; } }catch{}
+  try{
+    const syncDisp = document.getElementById('syncIdDisplay');
+    if(syncDisp){
+      const current = (typeof window.__activeSyncUid === 'string' && window.__activeSyncUid) || storedShareId() || (META && META.currentId) || '';
+      if(syncDisp.value !== current) syncDisp.value = current;
+    }
+  }catch{}
 
 
   // Reset
   $("#resetData").onclick = ()=>{
     if(confirm('データを初期化します。本当によろしいですか？')){
+      try{ queueGoalRemovals((state.goals||[]).map(g=>g&&g.id)); }catch{}
       localStorage.removeItem(LS_KEY);
       state = seed();
+      try{ window.__KA_STATE = state; }catch{}
+      save();
       renderAll();
       toast('リセットしました');
     }
@@ -528,7 +613,18 @@ function renderSettings(){
       try{
         const obj = JSON.parse($("#ioText").value);
         if(!obj || typeof obj !== 'object') throw new Error('bad');
+        const prevGoals = Array.isArray(state.goals) ? state.goals : [];
+        const nextGoals = Array.isArray(obj.goals) ? obj.goals : [];
+        const prevIds = new Set(prevGoals.map(g=>{ try{ return g && g.id ? String(g.id) : ''; }catch{ return ''; } }).filter(Boolean));
+        nextGoals.forEach(g=>{
+          try{
+            const id = g && g.id ? String(g.id) : '';
+            if(id) prevIds.delete(id);
+          }catch{}
+        });
+        if(prevIds.size){ queueGoalRemovals(Array.from(prevIds)); }
         state = { ...initialState(), ...obj };
+        try{ window.__KA_STATE = state; }catch{}
         save();
         renderAll();
         toast('インポートしました');
@@ -562,7 +658,9 @@ function renderSettings(){
       addBtn.onclick = ()=>{
         const name = prompt('なまえ'); if(!name) return;
         const id = idGen(); META.profiles.push({id,name}); META.currentId=id; localStorage.setItem(META_KEY, JSON.stringify(META));
-        state = initialState(); state.childName = name; save(); renderAll();
+        state = initialState(); try{ window.__KA_STATE = state; }catch{} state.childName = name; save(); renderAll();
+        syncShareUid(id, true);
+        try{ if(window.kidsAllowanceReloadSync) window.kidsAllowanceReloadSync(true); }catch{}
       };
       renBtn.onclick = ()=>{
         const p = META.profiles.find(x=>x.id===META.currentId); if(!p) return;
@@ -575,7 +673,9 @@ function renderSettings(){
         const cur=META.currentId; META.profiles = META.profiles.filter(x=>x.id!==cur);
         try{ localStorage.removeItem(pidKey(cur)); }catch{}
         META.currentId = META.profiles[0].id; localStorage.setItem(META_KEY, JSON.stringify(META));
-        state = loadProfileToActive(META.currentId) || initialState(); renderAll();
+        syncShareUid(META.currentId, true);
+        state = loadProfileToActive(META.currentId) || initialState(); try{ window.__KA_STATE = state; }catch{} renderAll();
+        try{ if(window.kidsAllowanceReloadSync) window.kidsAllowanceReloadSync(true); }catch{}
       };
     }catch{}
   })();
@@ -673,10 +773,11 @@ function editGoal(goal){
     save();
     renderGoals();
   }
-function deleteGoal(goal){
+  function deleteGoal(goal){
     if(!confirm('もくひょうをけしますか？')) return;
     recordGoalEvent('delete', goal);
     state.goals = state.goals.filter(g=>g.id!==goal.id);
+    queueGoalRemoval(goal && goal.id);
     markGoalsDirty();
     save();
     renderGoals();
@@ -993,31 +1094,65 @@ try{
 
 // Remote goals -> apply to UI/state
 try{
-  window.kidsAllowanceApplyGoals = function(goals){
+  function sanitizeGoal(goal){
+    return {
+      id: goal && goal.id ? String(goal.id) : id(),
+      name: (goal && goal.name) ? String(goal.name) : '',
+      target: Math.max(0, Math.round(Number(goal && goal.target) || 0)),
+      saved: Math.max(0, Math.round(Number(goal && goal.saved) || 0))
+    };
+  }
+  function sanitizeGoals(list){
+    return Array.isArray(list) ? list.map(sanitizeGoal) : [];
+  }
+  function applySanitizedGoals(goals, opts={}){
+    const arr = Array.isArray(goals) ? goals : [];
+    try{ window.__goalsDirty = false; }catch{}
+    try{ delete window.__pendingGoalsAfterSync; }catch{}
+    try{ delete window.__pendingGoalsVersion; }catch{}
+    state = { ...state, goals: arr };
+    persistWithoutSync();
+    try{ window.__KA_STATE = state; }catch{}
+    renderGoals();
+    renderSavings();
+    if(opts && opts.fromRemote){
+      try{ renderHome(); }catch{}
+    }
+  }
+  function hydrateGoalsFromRemote(raw){
+    const incomingVersion = Number(window.__incomingGoalsVersion || 0);
+    const sanitized = sanitizeGoals(raw);
     try{
-      const arr = Array.isArray(goals) ? goals.map(g => ({
-        id: g && g.id ? String(g.id) : id(),
-        name: (g && g.name) || '',
-        target: Math.round(Number(g && g.target) || 0),
-        saved: Math.round(Number(g && g.saved) || 0)
-      })) : [];
       if(window.__goalsDirty){
-        window.__pendingGoalsAfterSync = arr;
+        window.__pendingGoalsAfterSync = sanitized;
+        if(incomingVersion){
+          window.__pendingGoalsVersion = incomingVersion;
+        } else {
+          try{ delete window.__pendingGoalsVersion; }catch{}
+        }
         return;
       }
-      // Replace entire goals list
-      state.goals = arr;
-      window.__suppressNextSync = true;
-      // Persist locally and re-render; may trigger sync, which is fine
-      save();
-      renderGoals();
-      renderSavings();
+      applySanitizedGoals(sanitized, { fromRemote:true });
     }catch(e){ console.warn('kidsAllowanceApplyGoals failed', e); }
-  };
+    finally {
+      try{ delete window.__incomingGoalsVersion; }catch{}
+    }
+  }
+  function applyGoalsDirectly(raw){
+    try{
+      const sanitized = sanitizeGoals(raw);
+      applySanitizedGoals(sanitized, { fromRemote:false });
+    }catch(e){ console.warn('applyGoalsDirectly failed', e); }
+  }
+  try{ window.kidsAllowanceHydrateGoals = hydrateGoalsFromRemote; }catch{}
+  try{ window.kidsAllowanceApplyGoals = hydrateGoalsFromRemote; }catch{}
+  try{ window.applyGoalsDirectly = applyGoalsDirectly; }catch{}
   try{
     if(Array.isArray(window.__pendingGoals)){
+      try{ if(typeof window.__pendingGoalsVersion !== 'undefined'){ window.__incomingGoalsVersion = Number(window.__pendingGoalsVersion)||0; } }catch{}
       window.kidsAllowanceApplyGoals(window.__pendingGoals);
       delete window.__pendingGoals;
+      try{ delete window.__pendingGoalsVersion; }catch{}
     }
   }catch{}
 }catch{}
@@ -1081,7 +1216,8 @@ try{
     const row = document.createElement('div');
     row.id='syncIdRow'; row.className='field-row'; row.style.marginTop='8px';
     const label = document.createElement('label'); label.textContent = '同期ID';
-    const disp = document.createElement('input'); disp.id='syncIdDisplay'; disp.readOnly=true; disp.style.minWidth='160px'; disp.value = (META && META.currentId) || '';
+    const disp = document.createElement('input'); disp.id='syncIdDisplay'; disp.readOnly=true; disp.style.minWidth='160px';
+    disp.value = (typeof window.__activeSyncUid === 'string' && window.__activeSyncUid) || storedShareId() || (META && META.currentId) || '';
     const copyBtn = document.createElement('button'); copyBtn.className='btn'; copyBtn.textContent='コピー';
     const applyInput = document.createElement('input'); applyInput.id='syncIdInput'; applyInput.placeholder='貼り付けて適用'; applyInput.style.minWidth='160px';
     const applyBtn = document.createElement('button'); applyBtn.className='btn'; applyBtn.textContent='適用';
@@ -1095,7 +1231,10 @@ try{
           META.profiles = (META.profiles||[]); META.profiles.push({ id, name: state.childName||'なまえ' });
         }
         META.currentId = id; localStorage.setItem(META_KEY, JSON.stringify(META));
-        const st = loadProfileToActive(id) || initialState(); state = st; renderAll(); toast('同期IDを適用しました');
+        const st = loadProfileToActive(id) || initialState(); state = st; try{ window.__KA_STATE = state; }catch{} renderAll();
+        syncShareUid(id, true);
+        try{ if(window.kidsAllowanceReloadSync) window.kidsAllowanceReloadSync(true); }catch{}
+        toast('同期IDを適用しました');
       }catch(e){ console.warn(e); }
     };
 

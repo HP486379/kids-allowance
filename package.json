@@ -1,5 +1,8 @@
 {
   "name": "kids-allowance",
   "version": "1.0.1",
-  "private": true
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  }
 }
