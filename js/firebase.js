@@ -151,7 +151,7 @@ function makeIdIfMissing(item) {
   return `g_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 }
 
-export async function saveGoals(goals) {
+export async function saveGoals(goals, version) {
   const uid = getUid();
   const node = ref(db, "users/" + uid + "/goals");
   const arr = Array.isArray(goals) ? goals : [];
@@ -161,9 +161,14 @@ export async function saveGoals(goals) {
     // 既存のプロパティはそのまま保持。id を埋める。
     payload[id] = { ...(g || {}), id };
   });
-  // 空であれば空オブジェクトとして保存（配列だと穴が生じるため）
-  await set(node, Object.keys(payload).length ? payload : {});
-  console.debug("saveGoals -> saved", uid, payload);
+  const resolvedVersion = (() => {
+    const numeric = Number(version);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric;
+    return Date.now();
+  })();
+  payload.__meta = { updatedAt: resolvedVersion };
+  await set(node, payload);
+  console.debug("saveGoals -> saved", uid, { count: arr.length, version: resolvedVersion });
 }
 
 export async function saveChores(chores) {
@@ -195,9 +200,16 @@ export function listenGoals(callback) {
   const uid = getUid();
   return onValue(ref(db, "users/" + uid + "/goals"), (snap) => {
     const val = snap.val();
-    const arr = normalizeSnapshotToArray(val);
-    console.debug("listenGoals -> received", uid, arr);
-    callback?.(arr);
+    let meta = null;
+    let raw = val;
+    if (val && typeof val === "object" && !Array.isArray(val) && val.__meta) {
+      meta = { updatedAt: Number(val.__meta.updatedAt) || 0 };
+      raw = { ...val };
+      delete raw.__meta;
+    }
+    const arr = normalizeSnapshotToArray(raw);
+    console.debug("listenGoals -> received", uid, { count: arr.length, meta });
+    callback?.(arr, meta);
   });
 }
 

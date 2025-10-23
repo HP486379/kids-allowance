@@ -61,6 +61,108 @@ import {
 
 let activeFirebaseUid = null;
 let firebaseUnsubscribes = [];
+let lastLocalGoalsVersion = 0;
+
+function resolvedUid(uidOverride) {
+  if (uidOverride) return uidOverride;
+  if (activeFirebaseUid) return activeFirebaseUid;
+  try {
+    return getUid();
+  } catch (e) {
+    console.warn("resolvedUid failed", e);
+    return "guest";
+  }
+}
+
+function goalsVersionStorageKey(uidOverride) {
+  return `kid-allowance:goals-version:${resolvedUid(uidOverride) || "guest"}`;
+}
+
+function getLocalGoalsVersion(uidOverride) {
+  try {
+    return Number(localStorage.getItem(goalsVersionStorageKey(uidOverride))) || 0;
+  } catch (e) {
+    console.warn("getLocalGoalsVersion failed", e);
+    return 0;
+  }
+}
+
+function setLocalGoalsVersion(version, uidOverride) {
+  const safe = Number(version) || 0;
+  try {
+    localStorage.setItem(goalsVersionStorageKey(uidOverride), String(safe));
+  } catch (e) {
+    console.warn("setLocalGoalsVersion failed", e);
+  }
+  lastLocalGoalsVersion = safe;
+}
+
+function resolveNextGoalsVersion(versionOverride, { exact } = {}) {
+  const now = Date.now();
+  if (exact) {
+    const numeric = Number(versionOverride);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric;
+    if (lastLocalGoalsVersion > 0) return lastLocalGoalsVersion;
+    return now || 1;
+  }
+  const numeric = Number(versionOverride);
+  let candidate =
+    Number.isFinite(numeric) && numeric > 0
+      ? numeric
+      : Number.isFinite(now) && now > 0
+      ? now
+      : 1;
+  if (candidate <= lastLocalGoalsVersion) {
+    const fallback = Number.isFinite(now) && now > lastLocalGoalsVersion ? now : lastLocalGoalsVersion + 1;
+    candidate = fallback;
+  }
+  if (candidate <= 0) candidate = 1;
+  return candidate;
+}
+
+async function saveGoalsWithVersion(goals, options = {}) {
+  const arr = Array.isArray(goals) ? goals : [];
+  const { versionOverride, exact, uidOverride } = options;
+  const version = resolveNextGoalsVersion(versionOverride, { exact });
+  setLocalGoalsVersion(version, uidOverride);
+  await saveGoals(arr, version);
+  return { version, count: arr.length };
+}
+
+async function pushLocalGoalsSnapshot(versionOverride) {
+  try {
+    const raw = localStorage.getItem("kid-allowance-v1");
+    if (!raw) return;
+    const state = JSON.parse(raw);
+    const goals = Array.isArray(state?.goals) ? state.goals : [];
+    const seed = Number(versionOverride) || Number(lastLocalGoalsVersion) || Date.now();
+    const { version: appliedVersion, count } = await saveGoalsWithVersion(goals, {
+      versionOverride: seed,
+      exact: true,
+    });
+    if (typeof window.debugLog === "function") window.debugLog({ type: "reupload_local_goals", version: appliedVersion, count });
+  } catch (err) {
+    console.warn("pushLocalGoalsSnapshot failed", err);
+    if (typeof window.debugLog === "function") window.debugLog({ type: "reupload_local_goals_failed", e: String(err) });
+  }
+}
+
+function shouldApplyRemoteGoals(arr, meta) {
+  const remoteVersion = Number(meta && meta.updatedAt) || 0;
+  const localVersion = getLocalGoalsVersion();
+  if (typeof window.debugLog === "function") window.debugLog({ type: "goals_version_compare", remoteVersion, localVersion });
+  if (remoteVersion && localVersion && remoteVersion < localVersion) {
+    if (typeof window.debugLog === "function") window.debugLog({ type: "goals_version_stale_remote", remoteVersion, localVersion });
+    pushLocalGoalsSnapshot(localVersion).catch(() => {});
+    return false;
+  }
+  if (remoteVersion && remoteVersion >= localVersion) {
+    setLocalGoalsVersion(remoteVersion);
+  } else if (!remoteVersion && localVersion === 0 && Array.isArray(arr) && arr.length > 0) {
+    setLocalGoalsVersion(Date.now());
+  }
+  return true;
+}
 
 function registerFirebaseUnsub(fn) {
   if (typeof fn === "function") firebaseUnsubscribes.push(fn);
@@ -86,6 +188,7 @@ function initFirebaseRealtimeListeners() {
   const previous = activeFirebaseUid;
   teardownFirebaseListeners();
   activeFirebaseUid = uid;
+  lastLocalGoalsVersion = getLocalGoalsVersion(uid);
 
   if (previous && previous !== uid) {
     try { window._cloudSeen = new Set(); } catch (e) { console.warn("_cloudSeen reset failed", e); }
@@ -133,8 +236,9 @@ function initFirebaseRealtimeListeners() {
   }
 
   try {
-    const off = listenGoals((arr) => {
+    const off = listenGoals((arr, meta) => {
       try {
+        if (!shouldApplyRemoteGoals(arr, meta)) return;
         if (typeof window.debugLog === "function") window.debugLog({ type: "listenGoals", data: arr });
         try { localStorage.setItem("kids-allowance:goals", JSON.stringify(arr || [])); } catch (err) { console.warn("goals cache save failed", err); }
         try { window.dispatchEvent(new CustomEvent("goalsUpdated", { detail: arr || [] })); } catch (err) { console.warn("goalsUpdated dispatch failed", err); }
@@ -145,6 +249,7 @@ function initFirebaseRealtimeListeners() {
         }
       } catch (inner) {
         console.warn("applyGoals hook failed", inner);
+        if (typeof window.debugLog === "function") window.debugLog({ type: "listenGoals_apply_failed", e: String(inner) });
       }
     });
     registerFirebaseUnsub(off);
@@ -402,9 +507,9 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
 
       // users/{uid}/goals に保存（listenGoals が反応するノード）
       try {
-        await saveGoals(goals);
-        console.debug("saveGoals -> saved");
-        if (typeof window.debugLog === "function") window.debugLog("saveGoals -> saved");
+        const { version, count } = await saveGoalsWithVersion(goals);
+        console.debug("saveGoals -> saved", { version, count });
+        if (typeof window.debugLog === "function") window.debugLog({ type: "saveGoals_saved", version, count });
         try{
           window.__goalsDirty = false;
           if(Array.isArray(window.__pendingGoalsAfterSync)){
@@ -485,8 +590,8 @@ window.kidsAllowanceSaveGoals = function (goals) {
   goalsTimer = setTimeout(async () => {
     try {
       const arr = Array.isArray(goals) ? goals : [];
-      await saveGoals(arr);
-      if (typeof window.debugLog === 'function') window.debugLog({ type: 'saveGoals_direct', count: arr.length });
+      const { version, count } = await saveGoalsWithVersion(arr);
+      if (typeof window.debugLog === 'function') window.debugLog({ type: 'saveGoals_direct', version, count });
     } catch (e) {
       console.warn('saveGoals failed', e);
       if (typeof window.debugLog === 'function') window.debugLog({ type: 'saveGoals_direct_failed', e: String(e) });
