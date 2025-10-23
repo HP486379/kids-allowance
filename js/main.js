@@ -100,21 +100,47 @@ function sanitizeGoalSnapshot(goal, fallback = {}) {
     const saved = Number.isFinite(savedCandidate)
       ? Math.max(0, Math.round(savedCandidate))
       : Math.max(0, Math.round(Number(base.saved) || 0));
-    return { id, name, target, saved };
+    const updatedCandidate = Number(src.updatedAt);
+    const baseUpdated = Number(base.updatedAt);
+    const updatedAt = Number.isFinite(updatedCandidate) && updatedCandidate > 0
+      ? Math.round(updatedCandidate)
+      : Number.isFinite(baseUpdated) && baseUpdated > 0
+      ? Math.round(baseUpdated)
+      : Date.now();
+    return { id, name, target, saved, updatedAt };
   } catch (err) {
     console.warn("sanitizeGoalSnapshot failed", err);
     return null;
   }
 }
 
-function updateServerGoalSnapshot(goals) {
+function updateServerGoalSnapshot(goals, options = {}) {
   try {
     const sanitized = (Array.isArray(goals) ? goals : [])
       .map((goal) => sanitizeGoalSnapshot(goal))
       .filter((goal) => goal && goal.id);
-    goalServerState.snapshot = sanitized.map((goal) => ({ ...goal }));
+
+    if (options && options.merge) {
+      const map = new Map();
+      (Array.isArray(goalServerState.snapshot) ? goalServerState.snapshot : []).forEach((goal) => {
+        if (goal && goal.id) map.set(String(goal.id), { ...goal });
+      });
+      sanitized.forEach((goal) => {
+        if (!goal || !goal.id) return;
+        map.set(goal.id, { ...goal });
+      });
+      const removalSet = new Set();
+      (Array.isArray(options.removals) ? options.removals : []).forEach((raw) => {
+        const id = raw != null ? String(raw).trim() : "";
+        if (id) removalSet.add(id);
+      });
+      removalSet.forEach((id) => map.delete(id));
+      goalServerState.snapshot = Array.from(map.values());
+    } else {
+      goalServerState.snapshot = sanitized.map((goal) => ({ ...goal }));
+    }
     try {
-      window.__latestServerGoalsSnapshot = sanitized.map((goal) => ({ ...goal }));
+      window.__latestServerGoalsSnapshot = goalServerState.snapshot.map((goal) => ({ ...goal }));
     } catch {}
   } catch (err) {
     console.warn("updateServerGoalSnapshot failed", err);
@@ -646,13 +672,13 @@ window.kidsAllowanceSync = function syncToFirebase(state) {
       }
       const summary = { balance, goals: goalsForSave };
       try {
-        await saveGoals(goalsForSave);
+        await saveGoals(goalsForSave, appliedRemovals);
         console.debug("saveGoals -> saved");
         if (typeof window.debugLog === "function") window.debugLog("saveGoals -> saved");
         try { window.__lastSyncedGoalsKey = fingerprintGoals(goalsForSave); } catch {}
         try { updateKnownGoalIds(goalsForSave); } catch {}
         try { acknowledgeGoalRemovals(appliedRemovals); } catch {}
-        try { updateServerGoalSnapshot(goalsForSave); } catch {}
+        try { updateServerGoalSnapshot(goalsForSave, { merge: true, removals: appliedRemovals }); } catch {}
         try {
           window.__goalsDirty = false;
           applyPendingGoalsAfterSync();
@@ -749,10 +775,10 @@ window.kidsAllowanceSaveGoals = function (goals) {
       const arr = Array.isArray(goals) ? goals : [];
       const removedGoalIds = getPendingGoalRemovalIds();
       const { payload: goalsForSave, removals: appliedRemovals } = buildGoalsPayload(arr, removedGoalIds);
-      await saveGoals(goalsForSave);
+      await saveGoals(goalsForSave, appliedRemovals);
       try { updateKnownGoalIds(goalsForSave); } catch {}
       try { acknowledgeGoalRemovals(appliedRemovals); } catch {}
-      try { updateServerGoalSnapshot(goalsForSave); } catch {}
+      try { updateServerGoalSnapshot(goalsForSave, { merge: true, removals: appliedRemovals }); } catch {}
       if (typeof window.debugLog === 'function') window.debugLog({ type: 'saveGoals_direct', count: goalsForSave.length, removed: appliedRemovals });
     } catch (e) {
       console.warn('saveGoals failed', e);

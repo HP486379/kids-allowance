@@ -445,7 +445,7 @@ function renderGoals(){
       const target = parseAmount($('#goalTarget').value);
       if(!name) return toast('なまえをいれてね');
       if(!validAmount(target)) return toast('目標金額を正しく入れてね');
-      const newGoal = { id:id(), name, target, saved:0 };
+      const newGoal = { id:id(), name, target, saved:0, updatedAt: Date.now() };
       state.goals.push(newGoal);
       recordGoalEvent('create', newGoal);
       markGoalsDirty();
@@ -502,6 +502,7 @@ function renderGoals(){
       }
       amount = sanitizeAmount(amount);
       goal.saved = sanitizeAmount(cur - amount);
+      try{ goal.updatedAt = Date.now(); }catch{}
       addTx('income', amount, `もどす: ${goal.name}`);
       save();
       renderGoals();
@@ -753,6 +754,7 @@ function contributeToGoal(goal){
     if(amount > max) return toast('ざんだかよりおおいよ');
     if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
     goal.saved += amount;
+    try{ goal.updatedAt = Date.now(); }catch{}
     addTx('goal', amount, `ちょきん: ${goal.name}`);
     save();
     renderGoals();
@@ -768,6 +770,7 @@ function editGoal(goal){
     if(!validAmount(target)) return toast('目標金額を正しく入れてね');
     goal.name = name.trim()||goal.name;
     goal.target = target;
+    try{ goal.updatedAt = Date.now(); }catch{}
     recordGoalEvent('update', goal);
     markGoalsDirty();
     save();
@@ -1095,12 +1098,17 @@ try{
 // Remote goals -> apply to UI/state
 try{
   function sanitizeGoal(goal){
-    return {
+    const updatedRaw = Number(goal && goal.updatedAt);
+    const normalized = {
       id: goal && goal.id ? String(goal.id) : id(),
       name: (goal && goal.name) ? String(goal.name) : '',
       target: Math.max(0, Math.round(Number(goal && goal.target) || 0)),
       saved: Math.max(0, Math.round(Number(goal && goal.saved) || 0))
     };
+    if(Number.isFinite(updatedRaw) && updatedRaw > 0){
+      normalized.updatedAt = Math.round(updatedRaw);
+    }
+    return normalized;
   }
   function sanitizeGoals(list){
     return Array.isArray(list) ? list.map(sanitizeGoal) : [];

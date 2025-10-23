@@ -58,7 +58,7 @@ function loadGoalHydrationContext() {
 
 function loadApplyPendingContext() {
   const mainJs = fs.readFileSync(path.join(__dirname, '..', 'js', 'main.js'), 'utf8');
-  const start = mainJs.indexOf('function fingerprintGoals(');
+  const start = mainJs.indexOf('const goalSyncState');
   const end = mainJs.indexOf('function initRealtimeListeners()', start);
   if (start === -1 || end === -1) {
     throw new Error('Unable to locate pending goals helpers in main.js');
@@ -72,6 +72,10 @@ function loadApplyPendingContext() {
     Number,
     Object,
     Array,
+    Date,
+    Math,
+    Set,
+    Map,
   };
 
   const script = new vm.Script(snippet, { filename: 'main.js-pending-snippet' });
@@ -188,4 +192,34 @@ test('applyPendingGoalsAfterSync keeps queue when snapshot diverges', () => {
   assert.equal(applied, false);
   assert.deepEqual(ctx.window.__pendingGoalsAfterSync, pending, 'pending payload should remain for future attempts');
   assert.equal(ctx.window.__pendingGoalsVersion, 2);
+});
+
+test('buildGoalsPayload preserves updatedAt and removal ids', () => {
+  const ctx = loadApplyPendingContext();
+  const originalNow = ctx.Date.now;
+  ctx.Date.now = () => 4242;
+
+  ctx.updateServerGoalSnapshot([
+    { id: 'keep', name: 'Switch', target: 3000, saved: 500, updatedAt: 1111 },
+    { id: 'drop', name: '古い', target: 1000, saved: 0, updatedAt: 900 },
+  ]);
+
+  const localInput = [
+    { id: 'keep', name: 'Switch', target: '3500', saved: '800', updatedAt: 2222 },
+    { id: 'new', name: 'ギター', target: '5000', saved: '0' },
+  ];
+
+  const { payload, removals } = ctx.buildGoalsPayload(localInput, [' drop', '', null, 'drop']);
+  const plainPayload = JSON.parse(JSON.stringify(payload));
+
+  assert.deepEqual(plainPayload, [
+    { id: 'keep', name: 'Switch', target: 3500, saved: 800, updatedAt: 2222 },
+    { id: 'new', name: 'ギター', target: 5000, saved: 0, updatedAt: 4242 },
+  ]);
+  assert.deepEqual(removals, ['drop']);
+
+  ctx.updateServerGoalSnapshot(payload, { merge: true, removals });
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.getServerGoalSnapshot())), plainPayload);
+
+  ctx.Date.now = originalNow;
 });

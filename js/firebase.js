@@ -6,6 +6,7 @@ import {
   onValue,
   set,
   onChildAdded,
+  update,
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 // Firebase 設定
@@ -163,29 +164,48 @@ function normalizeGoalForSave(goal) {
   const savedRaw = Number(goal && goal.saved);
   const target = Number.isFinite(targetRaw) ? Math.max(0, Math.round(targetRaw)) : 0;
   const saved = Number.isFinite(savedRaw) ? Math.max(0, Math.round(savedRaw)) : 0;
+  const updatedRaw = Number(goal && goal.updatedAt);
+  const updatedAt = Number.isFinite(updatedRaw) && updatedRaw > 0 ? Math.round(updatedRaw) : Date.now();
   return {
     id,
     name,
     target,
     saved,
-    updatedAt: Date.now(),
+    updatedAt,
   };
 }
 
-export async function saveGoals(goals) {
-  const uid = getUid();
-  const node = ref(db, `users/${uid}/goals`);
+function buildGoalUpdatePayload(goals, removalIds = []) {
+  const updates = {};
   const arr = Array.isArray(goals) ? goals : [];
-  const payload = {};
 
   arr.forEach((goal) => {
     if (!goal) return;
     const normalized = normalizeGoalForSave(goal);
-    payload[normalized.id] = normalized;
+    if (!normalized || !normalized.id) return;
+    updates[normalized.id] = normalized;
   });
 
-  await set(node, payload);
-  console.debug("saveGoals -> saved", uid, Object.keys(payload));
+  (Array.isArray(removalIds) ? removalIds : []).forEach((raw) => {
+    const id = raw != null ? String(raw).trim() : "";
+    if (!id) return;
+    updates[id] = null;
+  });
+
+  return updates;
+}
+
+export async function saveGoals(goals, removalIds = []) {
+  const uid = getUid();
+  const node = ref(db, `users/${uid}/goals`);
+  const updates = buildGoalUpdatePayload(goals, removalIds);
+  if (Object.keys(updates).length === 0) {
+    console.debug("saveGoals -> skipped (no updates)", uid);
+    return;
+  }
+
+  await update(node, updates);
+  console.debug("saveGoals -> saved", uid, Object.keys(updates));
 }
 
 export async function saveChores(chores) {
