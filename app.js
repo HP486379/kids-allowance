@@ -1303,7 +1303,11 @@ try{
         _saveDeletedSet(s);
       }
       if(!confirm('この記録を削除しますか？')) return;
-      const next = [...state.transactions]; next.splice(idx,1); state.transactions = next;
+      const next = [...state.transactions];
+      next.splice(idx,1);
+      state.transactions = next;
+      try{ save(); }catch{}
+      try{ if(window.kidsAllowanceUpdateBalance) window.kidsAllowanceUpdateBalance(state); }catch{}
       try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); if(META&&META.currentId){ localStorage.setItem(pidKey(META.currentId), JSON.stringify(state)); } }catch{}
       try{ const fresh = JSON.parse(localStorage.getItem(LS_KEY)||'null'); if(fresh&&typeof fresh==='object') state=fresh; }catch{}
       try{ const b=document.getElementById('balance'); if(b) b.textContent = money(computeBalance()); }catch{}
@@ -1317,7 +1321,10 @@ try{
           if(!_lastDeletedTx) return;
           // tombstone を除去
           const s=_loadDeletedSet(); s.delete(_fp(_lastDeletedTx.type,_lastDeletedTx.amount,_lastDeletedTx.note)); _saveDeletedSet(s);
-          state.transactions.push(_lastDeletedTx); save(); renderTransactions(); renderHome();
+          state.transactions.push(_lastDeletedTx);
+          save();
+          try{ if(window.kidsAllowanceUpdateBalance) window.kidsAllowanceUpdateBalance(state); }catch{}
+          renderTransactions(); renderHome();
         }finally{ _lastDeletedTx=null; }
       }, 4000);
       _undoTimer = setTimeout(()=>{ _lastDeletedTx=null; }, 4100);
