@@ -138,3 +138,94 @@ test('deleteTx syncs balance updates and supports undo', () => {
   assert.equal(context.window.__saveCalls, 2, 'save should run after undo');
   assert.equal(context.window.__updateCalls, 2, 'balance update should rerun after undo');
 });
+
+test('cloud goal-event does not create duplicate transactions', () => {
+  const appJs = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const idSrc = extractFunction(appJs, 'id');
+  const sanitizeAmountSrc = extractFunction(appJs, 'sanitizeAmount');
+  const signForKindSrc = extractFunction(appJs, '_signForKind');
+  const fpSrc = extractFunction(appJs, '_fp');
+  const loadDeletedSrc = extractFunction(appJs, '_loadDeletedSet');
+  const saveDeletedSrc = extractFunction(appJs, '_saveDeletedSet');
+  const normalizeCloudSrc = extractFunction(appJs, 'normalizeCloudTransaction');
+  const integrateCloudSrc = extractFunction(appJs, 'integrateCloudTransaction');
+  const handleCloudSrc = extractFunction(appJs, 'handleCloudTransaction');
+
+  const scriptSource = `
+    const LS_KEY = 'kid-allowance-v1';
+    ${idSrc}
+    ${sanitizeAmountSrc}
+    ${signForKindSrc}
+    ${fpSrc}
+    ${loadDeletedSrc}
+    ${saveDeletedSrc}
+    ${normalizeCloudSrc}
+    ${integrateCloudSrc}
+    ${handleCloudSrc}
+    window.kidsAllowanceOnCloudTx = function(key, tx){
+      const tombstones = _loadDeletedSet();
+      handleCloudTransaction(key, tx, { tombstoneSet: tombstones });
+    };
+    let state = { currency: '¥', transactions: [] };
+    function save(){ window.__saveCalls = (window.__saveCalls || 0) + 1; }
+    function renderHome(){ window.__renderHomeCalls = (window.__renderHomeCalls || 0) + 1; }
+    function renderTransactions(){ window.__renderTransactionsCalls = (window.__renderTransactionsCalls || 0) + 1; }
+    window._cloudSeen = new Set();
+    window.__applyCloudTx = (key, tx) => window.kidsAllowanceOnCloudTx(key, tx);
+    window.__getState = () => state;
+    window.__setState = (next) => { state = next; };
+  `;
+
+  const context = {
+    window: {},
+    localStorage: {
+      _store: new Map(),
+      getItem(key) {
+        return this._store.has(key) ? this._store.get(key) : null;
+      },
+      setItem(key, value) {
+        this._store.set(key, String(value));
+      },
+      removeItem(key) {
+        this._store.delete(key);
+      },
+    },
+    console,
+    Math,
+    JSON,
+    Number,
+    String,
+    Array,
+    Date,
+    setTimeout,
+    clearTimeout,
+  };
+
+  const script = new vm.Script(scriptSource, { filename: 'app-cloudTx-snippet' });
+  const sandbox = vm.createContext(context);
+  script.runInContext(sandbox);
+
+  const existing = {
+    id: 'goal-event:test:create',
+    type: 'goal-event',
+    amount: 0,
+    note: 'もくひょう作成: テスト',
+    dateISO: '2024-01-01T00:00:00.000Z',
+  };
+  context.window.__setState({ currency: '¥', transactions: [existing] });
+  context.window.__saveCalls = 0;
+
+  context.window.__applyCloudTx('goal-event:test:create', {
+    id: 'goal-event:test:create',
+    type: 'goal-event',
+    amount: 0,
+    label: 'もくひょう作成: テスト',
+    timestamp: Date.parse('2024-01-02T12:00:00.000Z'),
+  });
+
+  const stateAfter = context.window.__getState();
+  assert.equal(stateAfter.transactions.length, 1, 'should not add a duplicate transaction');
+  assert.equal(stateAfter.transactions[0].type, 'goal-event', 'transaction type should remain goal-event');
+  assert.equal(stateAfter.transactions[0].note, 'もくひょう作成: テスト', 'note should stay unchanged');
+  assert.ok((context.window.__saveCalls || 0) <= 1, 'should perform at most one save');
+});

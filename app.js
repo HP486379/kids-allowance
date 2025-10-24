@@ -990,37 +990,102 @@ function bindChoreControls(){
 
 // ----- Init -----
   renderAll();
-// Cloud transaction -> append to UI/state (avoid feedback & duplicates)
-  try{
-    window.kidsAllowanceOnCloudTx = function(key, tx){
+// Cloud transaction helpers
+  function normalizeCloudTransaction(key, tx){
+    try{
+      const keyStr = key!=null ? String(key) : '';
+      const rawId = tx && tx.id != null ? String(tx.id) : '';
+      const idValue = rawId || keyStr || id();
+      const rawType = String(tx && tx.type || '').toLowerCase();
+      let type = 'expense';
+      if(rawType === 'add' || rawType === 'income') type = 'income';
+      else if(rawType === 'chore') type = 'chore';
+      else if(rawType === 'goal') type = 'goal';
+      else if(rawType === 'goal-event') type = 'goal-event';
+      else if(rawType === 'subtract' || rawType === 'expense') type = 'expense';
+      const amount = sanitizeAmount(Number(tx && tx.amount) || 0);
+      let dateISO = '';
+      if(tx && typeof tx.dateISO === 'string' && tx.dateISO){
+        dateISO = tx.dateISO;
+      }
+      if(!dateISO){
+        const ts = Number(tx && tx.timestamp);
+        if(Number.isFinite(ts)){
+          try{ dateISO = new Date(ts).toISOString(); }catch{}
+        }
+      }
+      if(!dateISO){
+        try{ dateISO = new Date().toISOString(); }catch{ dateISO=''; }
+      }
+      const note = String(tx && (tx.label ?? tx.note) || '').trim();
+      return {
+        id: idValue,
+        type,
+        amount,
+        note,
+        dateISO,
+        seenKeys: [keyStr, rawId || keyStr].filter(Boolean)
+      };
+    }catch(e){
+      console.warn('normalizeCloudTransaction failed', e);
+      return null;
+    }
+  }
+  function integrateCloudTransaction(entry, options){
+    options = options || {};
+    if(!entry || !entry.id) return false;
+    const tombstones = options.tombstoneSet;
+    if(tombstones && tombstones.size){
+      try{
+        if(tombstones.has(`id|${entry.id}`)) return false;
+        const sig = _fp(entry.type, entry.amount, entry.note);
+        if(tombstones.has(`sign|${sig}`) || tombstones.has(sig)) return false;
+      }catch{}
+    }
+    const idx = (state.transactions||[]).findIndex(tx => tx && String(tx.id) === entry.id);
+    if(idx >= 0){
+      const prev = state.transactions[idx];
+      const changed = !prev || prev.type !== entry.type || prev.amount !== entry.amount || (prev.note||'') !== (entry.note||'') || (prev.dateISO||'') !== (entry.dateISO||'');
+      if(changed){
+        state.transactions[idx] = { ...prev, ...entry };
+        return true;
+      }
+      return false;
+    }
+    const isPlus = (tp) => tp==='income' || tp==='chore' || tp==='add';
+    const isMinus = (tp) => tp==='expense' || tp==='goal' || tp==='subtract' || tp==='goal-event';
+    const sameKind = (a,b) => (isPlus(a)&&isPlus(b)) || (isMinus(a)&&isMinus(b));
+    const recent = state.transactions.slice(-100);
+    const dup = recent.some(u => u && sameKind(u.type, entry.type) && u.amount===entry.amount && (u.note||'')===(entry.note||'') && Math.abs(new Date(u.dateISO) - new Date(entry.dateISO)) < 5*60*1000);
+    if(dup) return false;
+    state.transactions.push(entry);
+    return true;
+  }
+  function handleCloudTransaction(key, tx, options){
+    options = options || {};
     try{
       if(!tx) return;
+      const normalized = normalizeCloudTransaction(key, tx);
+      if(!normalized) return;
       window._cloudSeen = window._cloudSeen || new Set();
-      if(window._cloudSeen.has(key)) return; // seen
-      window._cloudSeen.add(key);
-      const t = {
-        id: id(),
-        type: (tx.type === 'add' ? 'income' : 'expense'),
-        amount: sanitizeAmount(tx.amount),
-        note: tx.label || '',
-        dateISO: new Date(tx.timestamp || Date.now()).toISOString()
-      };
-      // robust duplicate guard: treat goal/expense as same "minus" kind
-      const isPlus = (tp) => tp==='income' || tp==='chore' || tp==='add';
-      const isMinus = (tp) => tp==='expense' || tp==='goal' || tp==='subtract';
-      const sameKind = (a,b) => (isPlus(a)&&isPlus(b)) || (isMinus(a)&&isMinus(b));
-      const recent = state.transactions.slice(-100);
-      const dup = recent.some(u => u && sameKind(u.type, t.type) && u.amount===t.amount && (u.note||'')===(t.note||'') && Math.abs(new Date(u.dateISO) - new Date(t.dateISO)) < 5*60*1000);
-      if(dup) return;
-      // defensive: extremely large amount confirmation in debug mode
-      if(t.amount >= 10000 && typeof window.debugLog === 'function') window.debugLog({ type:'cloudTx_large', t });
-      state.transactions.push(t);
+      const seenKeys = Array.isArray(normalized.seenKeys) ? normalized.seenKeys : [];
+      const exists = normalized.id && (state.transactions||[]).some(t => t && String(t.id) === normalized.id);
+      if(seenKeys.some(k => window._cloudSeen.has(k)) && exists) return;
+      seenKeys.forEach(k => { if(k) window._cloudSeen.add(k); });
+      const changed = integrateCloudTransaction(normalized, options);
+      if(!changed) return;
+      if(normalized.amount >= 10000 && typeof window.debugLog === 'function') window.debugLog({ type:'cloudTx_large', entry: normalized });
       save();
       renderHome();
       renderTransactions();
-    }catch{}
-  };
-}catch{}
+    }catch(e){ console.warn('handleCloudTransaction failed', e); }
+  }
+// Cloud transaction -> append to UI/state (avoid feedback & duplicates)
+  try{
+    window.kidsAllowanceOnCloudTx = function(key, tx){
+      handleCloudTransaction(key, tx);
+    };
+  }catch{}
 
 // Remote transactions -> apply full list (initial sync)
 try{
@@ -1335,14 +1400,8 @@ try{
   try{
     window.kidsAllowanceOnCloudTx = function(key, tx){
       try{
-        if(!tx) return;
-        const s=_loadDeletedSet(); if (s.has(_fp(tx.type, tx.amount, tx.label||''))) return;
-        window._cloudSeen = window._cloudSeen || new Set();
-        if(window._cloudSeen.has(key)) return; window._cloudSeen.add(key);
-        const t={ id: (tx && tx.id) ? String(tx.id) : id(), type:(tx.type==='add'?'income':'expense'), amount:sanitizeAmount(tx.amount), note:tx.label||'', dateISO:new Date(tx.timestamp||Date.now()).toISOString() };
-        const isPlus=(tp)=>tp==='income'||tp==='chore'||tp==='add'; const isMinus=(tp)=>tp==='expense'||tp==='goal'||tp==='subtract'; const sameKind=(a,b)=>(isPlus(a)&&isPlus(b))||(isMinus(a)&&isMinus(b));
-        const recent=state.transactions.slice(-100); const dup=recent.some(u=>u&&sameKind(u.type,t.type)&&u.amount===t.amount&&(u.note||'')===(t.note||'')&&Math.abs(new Date(u.dateISO)-new Date(t.dateISO))<5*60*1000); if(dup) return;
-        state.transactions.push(t); save(); renderHome(); renderTransactions();
+        const tombstones = _loadDeletedSet();
+        handleCloudTransaction(key, tx, { tombstoneSet: tombstones });
       }catch{}
     };
   }catch{}
