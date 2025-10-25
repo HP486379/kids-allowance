@@ -504,6 +504,7 @@ function renderGoals(){
       goal.saved = sanitizeAmount(cur - amount);
       try{ goal.updatedAt = Date.now(); }catch{}
       addTx('income', amount, `もどす: ${goal.name}`);
+      markGoalsDirty();
       save();
       renderGoals();
       renderSavings();
@@ -756,6 +757,7 @@ function contributeToGoal(goal){
     goal.saved += amount;
     try{ goal.updatedAt = Date.now(); }catch{}
     addTx('goal', amount, `ちょきん: ${goal.name}`);
+    markGoalsDirty();
     save();
     renderGoals();
     renderSavings();
