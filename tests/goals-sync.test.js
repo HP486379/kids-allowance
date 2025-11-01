@@ -86,7 +86,10 @@ function loadApplyPendingContext() {
 
 function loadGoalContributionContext() {
   const appJs = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
-  const start = appJs.indexOf('function renderSavings');
+  let start = appJs.indexOf('function findStateGoal');
+  if (start === -1) {
+    start = appJs.indexOf('function renderSavings');
+  }
   const end = appJs.indexOf('// ----- Effects -----', start);
   if (start === -1 || end === -1) {
     throw new Error('Unable to locate goal contribution block in app.js');
@@ -434,6 +437,20 @@ test('contributeToGoal marks goals dirty and increases savings', () => {
   assert.equal(tx.note, 'ちょきん: ギター');
 });
 
+test('contributeToGoal updates canonical state when handler receives cloned goal', () => {
+  const ctx = loadGoalContributionContext();
+  const source = { id: 'g1', name: 'ギター', target: 5000, saved: 1000 };
+  ctx.state.goals = [JSON.parse(JSON.stringify(source))];
+  const cloned = JSON.parse(JSON.stringify(source));
+  ctx.available = 5000;
+  ctx.promptValue = '3000';
+
+  ctx.contributeToGoal(cloned);
+
+  assert.equal(ctx.state.goals[0].saved, 4000);
+  assert.equal(cloned.saved, 4000);
+});
+
 test('withdrawFromGoal marks goals dirty and decreases savings', () => {
   const ctx = loadGoalContributionContext();
   const goal = { id: 'g1', name: 'ギター', target: 5000, saved: 4000 };
@@ -453,4 +470,17 @@ test('withdrawFromGoal marks goals dirty and decreases savings', () => {
   assert.equal(tx.amount, 1000);
   assert.equal(tx.note, 'もどす: ギター');
   // render helpers are stubbed in this harness, so we only ensure the calls did not throw.
+});
+
+test('withdrawFromGoal writes back to canonical state when using cloned goal object', () => {
+  const ctx = loadGoalContributionContext();
+  const source = { id: 'g1', name: 'ギター', target: 5000, saved: 4000 };
+  ctx.state.goals = [JSON.parse(JSON.stringify(source))];
+  const cloned = JSON.parse(JSON.stringify(source));
+  ctx.promptValue = '1000';
+
+  ctx.withdrawFromGoal(cloned, false);
+
+  assert.equal(ctx.state.goals[0].saved, 3000);
+  assert.equal(cloned.saved, 3000);
 });

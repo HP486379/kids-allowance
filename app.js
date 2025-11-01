@@ -456,6 +456,13 @@ function renderGoals(){
     };
   }
   // ===== Savings (ちょきん確認・戻す) =====
+  function findStateGoal(goal){
+    try{
+      const id = goal && goal.id != null ? String(goal.id) : '';
+      if(!id) return null;
+      return (state.goals||[]).find(g=> g && String(g.id) === id) || null;
+    }catch{ return null }
+  }
   function renderSavings(){
     const wrap = document.getElementById('savingsList');
     const sumEl = document.getElementById('savingsSummary');
@@ -489,8 +496,11 @@ function renderGoals(){
     });
   }
   function withdrawFromGoal(goal, all=false){
+    const stateGoal = findStateGoal(goal);
+    const targetGoal = stateGoal || goal;
+    if(!targetGoal) return;
     try{
-      const cur = Math.max(0, Math.round(Number(goal.saved)||0));
+      const cur = Math.max(0, Math.round(Number(targetGoal.saved)||0));
       if(cur<=0) return toast('この もくひょう に ちょきん はないよ');
       let amount = cur;
       if(!all){
@@ -501,8 +511,16 @@ function renderGoals(){
         if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
       }
       amount = sanitizeAmount(amount);
-      goal.saved = sanitizeAmount(cur - amount);
-      try{ goal.updatedAt = Date.now(); }catch{}
+      const next = sanitizeAmount(cur - amount);
+      targetGoal.saved = next;
+      if(stateGoal && stateGoal !== goal){
+        try{ goal.saved = next; }catch{}
+      }
+      try{
+        const timestamp = Date.now();
+        targetGoal.updatedAt = timestamp;
+        if(stateGoal && stateGoal !== goal) goal.updatedAt = timestamp;
+      }catch{}
       addTx('income', amount, `もどす: ${goal.name}`);
       markGoalsDirty();
       save();
@@ -747,6 +765,9 @@ function renderSettings(){
     } catch(_) {}
   }
 function contributeToGoal(goal){
+    const stateGoal = findStateGoal(goal);
+    const targetGoal = stateGoal || goal;
+    if(!targetGoal) return;
     const max = availableBalance();
     if(max <= 0) return toast('まずはおこづかいをためよう！');
     const val = prompt(`いくらちょきんする？（最大 ${money(max)}）`, Math.min(300, max).toString());
@@ -754,8 +775,17 @@ function contributeToGoal(goal){
     if(!validAmount(amount)) return;
     if(amount > max) return toast('ざんだかよりおおいよ');
     if(amount >= 10000 && !confirm(`金額が ${money(amount)} になっています。よろしいですか？`)) return;
-    goal.saved += amount;
-    try{ goal.updatedAt = Date.now(); }catch{}
+    const current = Math.max(0, Math.round(Number(targetGoal.saved)||0));
+    const next = sanitizeAmount(current + amount);
+    targetGoal.saved = next;
+    if(stateGoal && stateGoal !== goal){
+      try{ goal.saved = next; }catch{}
+    }
+    try{
+      const timestamp = Date.now();
+      targetGoal.updatedAt = timestamp;
+      if(stateGoal && stateGoal !== goal) goal.updatedAt = timestamp;
+    }catch{}
     addTx('goal', amount, `ちょきん: ${goal.name}`);
     markGoalsDirty();
     save();
